@@ -5,7 +5,7 @@ import { formatPlayTime } from './save.js';
 import { VERSION, PHASE } from './config.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const el = (tag, cls, html) => {
+export const el = (tag, cls, html) => {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
   if (html != null) e.innerHTML = html;
@@ -17,12 +17,12 @@ const NAMES = ['Rowan', 'Skye', 'Juno', 'Remy', 'Kit', 'Sage', 'Quinn', 'Ezra', 
 
 // Newly shown buttons ignore taps briefly, so the tap that revealed them
 // doesn't "fall through" and press whatever appeared under the finger.
-function guardClicks(node, ms = 400) {
+export function guardClicks(node, ms = 400) {
   node.style.pointerEvents = 'none';
   setTimeout(() => { node.style.pointerEvents = ''; }, ms);
 }
 
-function escapeHtml(s) {
+export function escapeHtml(s) {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
@@ -53,12 +53,12 @@ class DialogLayer {
     const line = this.lines[this.i];
     const tapped = this.tapped || this.ui.consumeViewTap();
     this.tapped = false;
-    const advance = input.consume('a') || input.consume('b') || tapped;
+    const advance = () => input.consume('a') || input.consume('b') || tapped;
 
     if (this.shown < line.length) {
       const cps = TEXT_SPEED[this.ui.game.settings.textSpeed] || 55;
       const before = Math.floor(this.shown);
-      this.shown = advance ? line.length : Math.min(line.length, this.shown + cps * dt);
+      this.shown = advance() ? line.length : Math.min(line.length, this.shown + cps * dt);
       const now = Math.floor(this.shown);
       if (now !== before) {
         this.textEl.textContent = line.slice(0, now).join('');
@@ -76,7 +76,7 @@ class DialogLayer {
       return;
     }
     this.moreEl.style.display = 'block';
-    if (advance) {
+    if (advance()) {
       this.ui.game.audio.sfx('blip');
       if (last) { this.close(); return; }
       this.i++;
@@ -185,7 +185,7 @@ class CardLayer {
 }
 
 // Full-screen layers (title, settings, new game) are mostly touch-driven.
-class ScreenLayer {
+export class ScreenLayer {
   constructor(ui, node) {
     this.ui = ui;
     this.el = node;
@@ -305,10 +305,12 @@ export class UI {
     const g = this.game;
     g.audio.sfx('select');
     const soon = (phase) => () => { g.audio.sfx('error'); this.toast(`🚧 Coming in Phase ${phase}!`); };
+    const noMonsters = () => { g.audio.sfx('error'); this.toast("You don't have any monsters yet!"); };
+    const dex = g.data.dex;
     this.push(new MenuLayer(this, [
-      { icon: '🐾', label: 'Monsters', soon: 'Phase 2', action: soon(2) },
-      { icon: '📖', label: 'Dex', soon: 'Phase 3', action: soon(3) },
-      { icon: '🎒', label: 'Bag', soon: 'Phase 3', action: soon(3) },
+      { icon: '🐾', label: 'Monsters', action: () => (g.data.party.length ? this.partyScreen({ mode: 'field' }) : noMonsters()) },
+      { icon: '📖', label: 'Dex', soon: `${dex.caught.length} caught`, action: () => { g.audio.sfx('select'); this.toast(`Seen ${dex.seen.length} · Caught ${dex.caught.length}. The full Dex arrives in Phase 3!`, 2600); } },
+      { icon: '🎒', label: 'Bag', action: () => this.bagScreen({ battle: false }) },
       { icon: '🪪', label: g.data.name, action: () => this.openTrainerCard() },
       { icon: '💾', label: 'Save', action: () => { g.saveGame(true); } },
       { icon: '⚙️', label: 'Settings', action: () => this.openSettings() },
@@ -327,7 +329,7 @@ export class UI {
         <div style="flex:1">
           <div class="row"><span>Name</span><b>${escapeHtml(d.name)}</b></div>
           <div class="row"><span>Money</span><b>$${d.money || 0}</b></div>
-          <div class="row"><span>Dex</span><b>0 caught</b></div>
+          <div class="row"><span>Dex</span><b>${d.dex ? d.dex.caught.length : 0} caught</b></div>
           <div class="row"><span>Play time</span><b>${formatPlayTime(d.playTime || 0)}</b></div>
         </div>
       </div>

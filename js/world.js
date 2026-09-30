@@ -62,12 +62,35 @@ class NPC extends Character {
   }
 }
 
+// Wild monsters you can see walking around. Touching one starts a battle.
+class Roamer {
+  constructor(species, level, wx, wy) {
+    this.monster = true;
+    this.species = species;
+    this.level = level;
+    this.wx = wx; this.wy = wy;
+    this.home = { x: wx, y: wy };
+    this.dir = 'down';
+    this.timer = Math.random() * 2;
+    this.target = null;
+    this.hop = 0;
+  }
+}
+
+function pickWeighted(table) {
+  const total = table.reduce((a, [, w]) => a + w, 0);
+  let r = Math.random() * total;
+  for (const [id, w] of table) { r -= w; if (r <= 0) return id; }
+  return table[table.length - 1][0];
+}
+
 export class World {
   constructor(game) {
     this.game = game;
     this.map = null;
     this.player = new Character('p1', 0, 0, 'down');
     this.npcs = [];
+    this.roamers = [];
     this.effects = [];
     this.grassShake = new Map();
     this.showPlayer = true;
@@ -79,11 +102,16 @@ export class World {
     return this.showPlayer ? [...this.npcs, this.player] : this.npcs;
   }
 
+  drawables() {
+    return [...this.characters(), ...this.roamers];
+  }
+
   load(id, ax, ay, dir) {
     const m = prepareMap(id);
     this.map = m;
     this.game.renderer.setMap(m);
-    this.npcs = m.npcs.map((n) => new NPC(n));
+    this.npcs = m.npcs.filter((n) => !(n.hideIf && n.hideIf(this.game))).map((n) => new NPC(n));
+    this.roamers = [];
     const p = this.player;
     p.wx = ax * TILE;
     p.wy = ay * TILE;
@@ -92,7 +120,37 @@ export class World {
     this.effects = [];
     this.grassShake.clear();
     this.lastTileKey = this.tileKeyAt(p.wx, p.wy);
+    this.spawnRoamers();
     this.game.renderer.updateCamera(p.wx, p.wy - 12, 0, true);
+  }
+
+  spawnRoamers() {
+    const cfg = this.map.roamers;
+    if (!cfg) return;
+    const open = [];
+    for (let y = 2; y < this.map.h - 2; y++) {
+      for (let x = 2; x < this.map.w - 2; x++) {
+        const ch = this.map.tiles[y][x];
+        if ((ch === '.' || ch === ',') && !this.solidTile(x, y)) open.push([x, y]);
+      }
+    }
+    const p = this.player;
+    const far = open.filter(([x, y]) => Math.hypot((x + 0.5) * TILE - p.wx, (y + 0.8) * TILE - p.wy) > TILE * 6);
+    const pool = far.length ? far : open;
+    const place = (species, level) => {
+      if (!pool.length) return;
+      const [x, y] = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      this.roamers.push(new Roamer(species, level, (x + 0.5) * TILE, (y + 0.8) * TILE));
+    };
+    for (let i = 0; i < cfg.count; i++) {
+      const [lo, hi] = cfg.levels;
+      place(pickWeighted(cfg.table), lo + Math.floor(Math.random() * (hi - lo + 1)));
+    }
+    if (cfg.rare && Math.random() < cfg.rare.chance) place(cfg.rare.species, cfg.rare.level);
+  }
+
+  removeRoamer(r) {
+    this.roamers = this.roamers.filter((x) => x !== r);
   }
 
   tileKeyAt(wx, wy) {
@@ -179,7 +237,17 @@ export class World {
     if (moved) this.onPlayerMoved();
 
     for (const n of this.npcs) this.updateNPC(n, dt);
+    for (const r of this.roamers) this.updateRoamer(r, dt);
     this.updateEffects(dt);
+    if (this.game.canBattle()) {
+      for (const r of this.roamers) {
+        if (Math.abs(r.wx - p.wx) < 20 && Math.abs(r.wy - p.wy) < 16) {
+          this.removeRoamer(r);
+          this.game.startWildBattle(r.species, r.level);
+          return;
+        }
+      }
+    }
     this.game.renderer.updateCamera(p.wx, p.wy - 12, dt);
 
     if (input.consume('a')) this.interact();
@@ -219,8 +287,11 @@ export class World {
         color: Math.random() < 0.5 ? '#58bb4e' : '#8be07a',
       });
     }
-    // Phase 2 hooks wild encounters in here.
-    if (this.game.onGrassStep) this.game.onGrassStep(tx, ty);
+    const enc = this.map.encounters;
+    if (enc && this.game.canBattle() && Math.random() < enc.rate) {
+      const [lo, hi] = enc.levels;
+      this.game.startWildBattle(pickWeighted(enc.table), lo + Math.floor(Math.random() * (hi - lo + 1)));
+    }
   }
 
   updateEffects(dt) {
@@ -268,6 +339,33 @@ export class World {
     n.target = { x: tx, y: ty };
   }
 
+  updateRoamer(r, dt) {
+    if (r.target) {
+      const dx = r.target.x - r.wx, dy = r.target.y - r.wy;
+      const dist = Math.hypot(dx, dy);
+      const step = Math.min(dist, 46 * dt);
+      const bx = r.wx, by = r.wy;
+      if (dist > 0.5) {
+        const nx = r.wx + (dx / dist) * step, ny = r.wy + (dy / dist) * step;
+        if (!this.solidTile(Math.floor(nx / TILE), Math.floor((ny - 4) / TILE))) { r.wx = nx; r.wy = ny; }
+      }
+      const moved = Math.hypot(r.wx - bx, r.wy - by);
+      r.hop += moved;
+      if (dist <= 0.5 || moved < 0.01) { r.target = null; r.timer = 0.8 + Math.random() * 2.2; r.hop = 0; }
+      return;
+    }
+    r.timer -= dt;
+    if (r.timer > 0) return;
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const [ddx, ddy] = dirs[Math.floor(Math.random() * 4)];
+    const tx = r.wx + ddx * TILE, ty = r.wy + ddy * TILE;
+    r.timer = 1 + Math.random() * 2;
+    if (Math.abs(tx - r.home.x) > TILE * 3 || Math.abs(ty - r.home.y) > TILE * 3) return;
+    const ch = this.map.tiles[Math.floor((ty - 4) / TILE)]?.[Math.floor(tx / TILE)];
+    if (!ch || this.solidTile(Math.floor(tx / TILE), Math.floor((ty - 4) / TILE)) || TILES[ch].tallGrass) return;
+    r.target = { x: tx, y: ty };
+  }
+
   interact() {
     const p = this.player;
     const [dx, dy] = DIRS[p.dir];
@@ -291,6 +389,7 @@ export class World {
       best.dir = OPPOSITE[p.dir];
       best.target = null;
       best.frame = 0;
+      if (best.def.script) { this.game.runScript(() => best.def.script(this.game, best)); return; }
       const lines = best.def.talk ? best.def.talk(this.game) : best.def.lines;
       this.game.ui.dialog(lines, { speaker: best.def.name });
       return;
@@ -301,6 +400,7 @@ export class World {
     const text = this.map.texts[key];
     if (text) { this.game.ui.dialog(text); return; }
     const obj = this.map.objectAt.get(key);
+    if (obj && obj.script) { this.game.runScript(() => obj.script(this.game)); return; }
     if (obj && obj.text) { this.game.ui.dialog(obj.text); return; }
     const ch = this.map.tiles[ty] && this.map.tiles[ty][tx];
     if (ch === '~') this.game.ui.dialog(['The water is calm and clear.']);

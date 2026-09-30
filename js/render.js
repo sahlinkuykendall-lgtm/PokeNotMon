@@ -12,8 +12,9 @@ const STRIP = 2; // backing pixels per ground strip
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export class Renderer {
-  constructor(canvas, sprites) {
+  constructor(canvas, sprites, monArt) {
     this.canvas = canvas;
+    this.monArt = monArt;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.sprites = sprites;
     this.cam = { x: 0, y: 0 };
@@ -186,10 +187,10 @@ export class Renderer {
   }
 
   drawSprite(spr, p, bob = 0) {
-    const s = p.s;
+    const s = p.s * (spr.scale || 1);
     const w = spr.img.width * s, h = spr.img.height * s;
     const x = p.x - spr.ax * s;
-    const y = p.y - spr.ay * s - bob * s;
+    const y = p.y - spr.ay * s - bob * p.s;
     if (x > this.gw || x + w < 0 || y > this.gh || y + h < 0) return;
     this.ctx.drawImage(spr.img, x, y, w, h);
   }
@@ -222,12 +223,27 @@ export class Renderer {
       if (dy < dyMin || dy > dyMax) continue;
       list.push(b);
     }
-    for (const c of world.characters()) list.push(c);
+    for (const c of world.drawables()) {
+      const dy = c.wy - this.cam.y;
+      if (dy < dyMin || dy > dyMax) continue;
+      list.push(c);
+    }
     list.sort((a, b) => a.wy - b.wy);
 
     const sprites = this.sprites;
     for (const b of list) {
       const p = this.project(b.wx, b.wy);
+      if (!(p.s > 0)) continue;
+      if (b.monster) {
+        const spr = this.monArt.overworld(b.species);
+        const hop = Math.abs(Math.sin(b.hop / 9)) * 5 + Math.abs(Math.sin(time * 2 + b.home.x)) * 1.2;
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y - 1 * p.s, 12 * p.s, 4.5 * p.s * PERSP.K, 0, 0, Math.PI * 2);
+        ctx.fill();
+        this.drawSprite(spr, p, hop);
+        continue;
+      }
       if (b.character) {
         const spr = sprites.trainer(b.look, b.dir, b.frame);
         ctx.fillStyle = 'rgba(0,0,0,0.24)';
@@ -250,6 +266,7 @@ export class Renderer {
     // Particles (grass rustle, etc.)
     for (const fx of world.effects) {
       const p = this.project(fx.wx, fx.wy);
+      if (!(p.s > 0)) continue;
       ctx.fillStyle = fx.color;
       const size = 3 * p.s;
       ctx.fillRect(p.x - size / 2, p.y - fx.z * p.s - size / 2, size, size);

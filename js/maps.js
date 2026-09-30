@@ -2,6 +2,8 @@
 // Buildings and furniture are placed as objects on top of the tile grid.
 // NPC and warp positions are in tile units.
 
+import { profTalk, momTalk, bedRest } from './story.js';
+
 export const TILES = {
   '.': { ground: 'grass' },
   ',': { ground: 'flowers' },
@@ -85,8 +87,8 @@ export const MAPS = {
         id: 'town_oldman', look: 'oldman', name: 'Old Man', x: 20, y: 14, dir: 'left', wander: 1,
         lines: [
           'Tall grass is where wild monsters hide.',
-          "Going in there without a monster of your own? That's how you end up running home crying.",
-          'Heh. I speak from experience.',
+          "Weaken them in battle, then throw a Capture Orb. That's the trick!",
+          'And if you see one wandering in the open, walk right up to it. Heh.',
         ],
       },
     ],
@@ -97,6 +99,17 @@ export const MAPS = {
     music: 'route',
     outdoor: true,
     bg: '#1d4a2a',
+    encounters: {
+      rate: 0.13,
+      levels: [2, 5],
+      table: [['fluffinch', 30], ['pebblit', 24], ['brawlbit', 20], ['toxitoad', 10], ['mothwisp', 10], ['sparkrill', 6]],
+    },
+    roamers: {
+      count: 3,
+      levels: [3, 6],
+      table: [['fluffinch', 35], ['pebblit', 30], ['psyfox', 15], ['frostnib', 12], ['kettlekin', 8]],
+      rare: { species: 'skyrion', chance: 0.2, level: 8 },
+    },
     tiles: [
       '#########==###########',
       '#########xx###########',
@@ -155,7 +168,8 @@ export const MAPS = {
         lines: [
           'Sorry, kid! The road to Cinderpeak City is closed.',
           "A rockslide buried the path. We're digging it out as fast as we can.",
-          '🚧 This road opens in a future update (Phase 4)!',
+          'Train your monsters in the tall grass while you wait!',
+          '🚧 This road opens in a future update (Phase 4).',
         ],
       },
       {
@@ -190,8 +204,8 @@ export const MAPS = {
       'VVVVmmVVVV',
     ],
     objects: [
-      { sprite: 'bed', x: 1, y: 1, w: 1, h: 2, text: ['Your bed. Still warm.', 'Ten more minutes...? No! Adventure awaits!'] },
-      { sprite: 'pc', x: 3, y: 1, w: 1, h: 1, text: ["It's your PC.", '🚧 Monster storage boxes arrive in Phase 3.'] },
+      { sprite: 'bed', x: 1, y: 1, w: 1, h: 2, script: bedRest },
+      { sprite: 'pc', x: 3, y: 1, w: 1, h: 1, text: ["It's your PC.", 'Extra monsters you catch are stored here.', '🚧 Managing your PC Box arrives in Phase 3.'] },
       { sprite: 'tv', x: 6, y: 1, w: 1, h: 1, text: ["There's a monster battle on TV!", 'The Champion just won with a single move. So cool!'] },
       { sprite: 'bookshelf', x: 8, y: 1, w: 1, h: 1, text: ['It\'s packed with books.', '"Monsters of the Region, Vol. 1"... "How to Befriend a Dragon"...'] },
       { sprite: 'table', x: 6, y: 5, w: 2, h: 1, text: ['Breakfast is on the table.', 'Mom made pancakes!'] },
@@ -203,10 +217,7 @@ export const MAPS = {
     texts: {},
     npcs: [
       {
-        id: 'mom', look: 'mom', name: 'Mom', x: 8, y: 4, dir: 'left',
-        talk: (game) => game.flags.metProf
-          ? ['How was the lab, {name}?', "Remember: whatever happens out there, you can always come home.", '...And change your socks!']
-          : ['Good morning, {name}! Did you sleep well?', 'Professor Hazel stopped by. She wants to see you at her lab!', "It's the big building at the south end of town."],
+        id: 'mom', look: 'mom', name: 'Mom', x: 8, y: 4, dir: 'left', script: momTalk,
       },
     ],
   },
@@ -237,7 +248,12 @@ export const MAPS = {
       { sprite: 'pc', x: 7, y: 1, w: 1, h: 1, text: ['The Professor\'s PC.', "There's an email titled \"STARTER MONSTERS - READY SOON!\""] },
       { sprite: 'bookshelf', x: 9, y: 1, w: 1, h: 1, text: ['"Rare Prism variants shimmer with color and are stronger than normal."'] },
       { sprite: 'bookshelf', x: 10, y: 1, w: 1, h: 1, text: ['A dusty book: "Legends of the Mythical Types"'] },
-      { sprite: 'labtable', x: 5, y: 4, w: 2, h: 1, text: ['Three capture orbs sit on the table.', 'They seem to be... wiggling?', '🚧 Starter monsters arrive in Phase 2!'] },
+      {
+        sprite: 'labtable', x: 5, y: 4, w: 2, h: 1,
+        script: (game) => (game.flags.hasStarter
+          ? game.ui.dialog(["There's one capture orb left on the table.", 'The Professor is keeping it safe for the next new trainer.'])
+          : profTalk(game)),
+      },
       { sprite: 'plant', x: 1, y: 9, w: 1, h: 1, text: ['A lab-grown plant. It seems happy.'] },
       { sprite: 'plant', x: 10, y: 9, w: 1, h: 1, text: ['A lab-grown plant. One of its leaves twitched.'] },
     ],
@@ -247,27 +263,15 @@ export const MAPS = {
     texts: {},
     npcs: [
       {
-        id: 'prof', look: 'prof', name: 'Prof. Hazel', x: 6, y: 3, dir: 'down',
-        talk: (game) => {
-          if (!game.flags.metProf) {
-            game.flags.metProf = true;
-            return [
-              'Ah, {name}! There you are!',
-              "I'm finishing preparations for three very special monsters.",
-              'One of them will become your partner!',
-              "They're still a bit shy, so give me a little more time.",
-              'In the meantime, why not explore Route 1 north of town?',
-              '🚧 Choosing your starter comes in Phase 2!',
-            ];
-          }
-          return ['The monsters are almost ready, {name}!', 'Explore a bit and come back soon.'];
-        },
+        id: 'prof', look: 'prof', name: 'Prof. Hazel', x: 6, y: 3, dir: 'down', script: profTalk,
       },
       {
         id: 'kai', look: 'kai', name: 'Kai', x: 3, y: 6, dir: 'right', wander: 1,
+        hideIf: (game) => game.flags.kaiLeft,
         talk: (game) => [
           'Yo, {name}! Took you long enough.',
           "The Professor's making us wait for our monsters. Ugh!",
+          'Go talk to her already so we can pick!',
           "Whatever. When I get mine, I'm gonna be the strongest trainer ever.",
           "You'll see!",
         ],

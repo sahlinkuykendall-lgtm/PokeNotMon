@@ -35,6 +35,51 @@ const SONGS = {
     chords: 'G:16 Em:16 C:16 D:16 G:16 Em:16 C:8 D:8 G:16',
     drums: 'k.h.s.h.k.h.s.hh',
   },
+  battle: {
+    bpm: 152,
+    lead: 'A5:2 C6:2 E6:2 A5:2 C6:2 E6:2 D6:2 C6:2 B5:2 C6:2 B5:2 A5:2 E5:4 r:4 ' +
+          'F5:2 A5:2 C6:2 F6:2 E6:2 C6:2 A5:2 C6:2 B5:4 D6:4 G6:4 F6:2 D6:2 ' +
+          'A5:2 C6:2 E6:2 A6:2 G6:2 E6:2 C6:2 E6:2 D6:2 C6:2 B5:2 A5:2 G5:4 A5:4 ' +
+          'F5:4 A5:4 C6:4 D6:4 E6:8 G#5:4 B5:4',
+    chords: 'Am:16 Am:16 F:16 G:16 Am:16 Am:16 F:16 E:16',
+    drums: 'k.h.s.hkk.h.s.hh',
+  },
+  rival: {
+    bpm: 160,
+    lead: 'E5:2 G5:2 B5:2 E6:2 D6:2 B5:2 G5:2 B5:2 C6:2 E6:2 G6:4 F#6:2 E6:2 D6:4 ' +
+          'D6:2 F#5:2 A5:2 D6:2 C6:2 A5:2 F#5:2 A5:2 B5:4 D#6:4 F#6:6 r:2 ' +
+          'E6:2 D6:2 B5:2 G5:2 E5:2 G5:2 B5:2 E6:2 G6:4 E6:4 C6:4 E6:4 ' +
+          'A5:2 C6:2 E6:2 A6:2 G6:2 E6:2 C6:2 A5:2 B5:8 D#6:4 F#6:4',
+    chords: 'Em:16 C:16 D:16 B:16 Em:16 C:16 Am:16 B:16',
+    drums: 'k.hsk.hsk.hsk.ss',
+  },
+  victory: {
+    bpm: 120,
+    lead: 'G5:2 C6:2 E6:2 G6:6 E6:2 G6:2 A6:4 G6:2 F6:2 E6:4 C6:4 ' +
+          'D6:2 E6:2 F6:2 D6:2 B5:4 G5:4 C6:12 r:4',
+    chords: 'C:16 F:16 G:16 C:16',
+    drums: 'k...h...k.k.h...',
+  },
+};
+
+// Sound effect recipes per move type.
+const TYPE_SFX = {
+  fire: ['noise', 0.35, 400, 0.2, 4000],
+  water: ['noise', 0.3, 700, 0.16, 2200],
+  grass: ['noise', 0.22, 2400, 0.12],
+  electric: ['zap'],
+  ice: ['tone', 'p12', 96, 0.25, 0.08, 84],
+  ground: ['noise', 0.35, 120, 0.3, 900],
+  wind: ['noise', 0.4, 1500, 0.14, 5000],
+  flying: ['noise', 0.25, 1800, 0.12, 5000],
+  fighting: ['noise', 0.12, 200, 0.35],
+  psychic: ['tone', 'p50', 72, 0.35, 0.07, 90],
+  ghost: ['tone', 'triangle', 60, 0.45, 0.2, 48],
+  poison: ['tone', 'p25', 50, 0.3, 0.08, 44],
+  metal: ['tone', 'p12', 100, 0.18, 0.08, 88],
+  dragon: ['noise', 0.4, 200, 0.3, 1500],
+  mythical: ['arp', [84, 88, 91, 96]],
+  neutral: ['noise', 0.1, 300, 0.25],
 };
 
 function compileSong(def) {
@@ -265,7 +310,50 @@ export const Audio = {
         [60, 64, 67, 72, 76, 79, 84].forEach((m, i) => this.tone('p25', m, t + i * 0.045, 0.08, 0.1, out));
         break;
       case 'error': this.tone('p50', 45, t, 0.18, 0.1, out, 40); break;
-      default: break;
+      case 'encounter':
+        [76, 72, 76, 72, 79, 84].forEach((m, i) => this.tone('p25', m, t + i * 0.08, 0.08, 0.1, out));
+        break;
+      case 'lunge': this.noiseHit(t, 0.08, 1500, 0.08, out); break;
+      case 'hit': this.noiseHit(t, 0.14, 150, 0.35, out); this.tone('triangle', 40, t, 0.1, 0.3, out, 30); break;
+      case 'hitSuper':
+        this.noiseHit(t, 0.22, 100, 0.45, out);
+        this.tone('p50', 52, t, 0.18, 0.12, out, 36);
+        break;
+      case 'hitWeak': this.noiseHit(t, 0.08, 800, 0.18, out); break;
+      case 'faint': this.tone('p25', 72, t, 0.5, 0.1, out, 36); break;
+      case 'throw': this.tone('p12', 72, t, 0.3, 0.06, out, 90); break;
+      case 'orbpop':
+        this.tone('p25', 84, t, 0.05, 0.08, out);
+        this.tone('p25', 91, t + 0.05, 0.08, 0.08, out);
+        break;
+      case 'wobble': this.tone('triangle', 48, t, 0.08, 0.3, out); this.tone('triangle', 43, t + 0.1, 0.08, 0.3, out); break;
+      case 'caught':
+        [72, 76, 79, 84, 79, 84, 88].forEach((m, i) => this.tone('p25', m, t + i * 0.09, i === 6 ? 0.4 : 0.09, 0.11, out));
+        break;
+      case 'levelup':
+        [72, 76, 79, 76, 79, 84].forEach((m, i) => this.tone('p25', m, t + i * 0.07, i === 5 ? 0.3 : 0.07, 0.11, out));
+        break;
+      case 'exp': this.tone('p12', 84, t, 0.3, 0.03, out, 96); break;
+      case 'heal':
+        [72, 79, 76, 84, 88].forEach((m, i) => this.tone('p25', m, t + i * 0.1, 0.12, 0.1, out));
+        break;
+      case 'statup': this.tone('p25', 72, t, 0.25, 0.08, out, 84); break;
+      case 'statdown': this.tone('p25', 84, t, 0.25, 0.08, out, 70); break;
+      case 'status': this.tone('p50', 64, t, 0.08, 0.08, out); this.tone('p50', 61, t + 0.1, 0.12, 0.08, out); break;
+      case 'evolve': [60, 64, 67, 72].forEach((m, i) => this.tone('triangle', m, t + i * 0.25, 0.25, 0.2, out)); break;
+      case 'sparkle': this.tone('p12', 96 + Math.floor(Math.random() * 8), t, 0.05, 0.03, out); break;
+      default:
+        if (name.startsWith('move:')) this.moveSfx(name.slice(5), t, out);
+        break;
     }
+  },
+
+  moveSfx(type, t, out) {
+    const r = TYPE_SFX[type] || TYPE_SFX.neutral;
+    if (r[0] === 'noise') this.noiseHit(t, r[1], r[2], r[3], out, r[4]);
+    else if (r[0] === 'tone') this.tone(r[1], r[2], t, r[3], r[4], out, r[5]);
+    else if (r[0] === 'zap') {
+      for (let i = 0; i < 6; i++) this.tone('p50', 70 + Math.floor(Math.random() * 20), t + i * 0.04, 0.04, 0.07, out);
+    } else if (r[0] === 'arp') r[1].forEach((m, i) => this.tone('p25', m, t + i * 0.06, 0.08, 0.08, out));
   },
 };

@@ -72,16 +72,21 @@ Each phase ends with something playable on the phone. Test it, give feedback, th
 - Pause menu, Trainer card, Settings (layout, volume, text speed, delete save)
 - Autosave + manual save
 
-### Phase 2: Monsters & Battles
-- Monster data system + first ~20 monsters (including Sparkrill line and Skyrion)
-- Pick your starter in the lab; rival Kai picks the one strong against yours
-- Wild encounters in tall grass + visible roaming monsters
-- 1v1 turn-based battle screen with flashy move effects and screen shake
-- 15 types with dual types and the effectiveness chart
-- Full stats, 4 moves, status effects, crits, accuracy
-- Catching with capture orbs, wild monsters that (rarely) flee
-- EXP, leveling, learning moves, evolution by level
-- First rival battle
+### ✅ Phase 2: Monsters & Battles
+- 25 monsters with their own pixel art (front + back), stats, learnsets and dex entries
+  - Starters: Emberpup → Blazehound → Infernox (Fire), Sproutle → Thornback → Verdantor (Grass), Finnlet → Tidalfin → Abyssail (Water)
+  - Sparkrill → Voltalon → Thundrake (Electric/Dragon), Skyrion (Wind/Flying)
+  - Route monsters: Pebblit, Boulderon, Fluffinch, Galewing, Brawlbit, Punchare, Mothwisp, Toxitoad, Frostnib, Kettlekin, Psyfox, Lumiwisp
+- Choose your starter in the lab; Kai picks the one strong against yours and battles you
+- Random encounters in Route 1's tall grass + wild monsters you can see wandering around (Skyrion is a rare wanderer, Sparkrill a rare grass find)
+- 1v1 turn-based battles: 15 types + dual types, full stats, crits, accuracy, priority moves, stat stages
+- Status effects: poison, burn, sleep, paralysis, freeze, confusion
+- Flashy move effects per type, screen shake, hit flashes
+- Capture orbs with wobble animation; wild monsters very rarely flee
+- EXP to monsters that fought, level ups, learning / forgetting moves, evolution with animation
+- Party screen, summary screen, bag (potions + capture orbs), forced switch, blacking out
+- Mom and your bed heal your team
+- Battle, rival and victory music
 
 ### Phase 3: Trainer Life
 - Party of 6 + storage box (PC)

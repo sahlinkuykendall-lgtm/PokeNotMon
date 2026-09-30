@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Monster sheet</title>
+<style>
+  body { margin: 0; background: #cfe6c0; font: 12px sans-serif; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 8px; }
+  .cell { background: #eef7e6; border-radius: 8px; text-align: center; padding: 4px; }
+  canvas { image-rendering: pixelated; width: 152px; height: 144px; }
+  .back { width: 76px; height: 72px; }
+</style>
+<div class="grid" id="g"></div>
+<script type="module">
+  import { MonsterArt } from '../js/monart.js';
+  import { SPECIES } from '../js/data/monsters.js';
+  const art = new MonsterArt();
+  const g = document.getElementById('g');
+  for (const id of Object.keys(SPECIES)) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const f = art.front(id), b = art.back(id);
+    f.className = ''; b.className = 'back';
+    cell.append(f, b, document.createElement('br'), SPECIES[id].name);
+    g.appendChild(cell);
+  }
+  window.done = true;
+</script>

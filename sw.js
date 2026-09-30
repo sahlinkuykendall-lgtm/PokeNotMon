@@ -1,6 +1,6 @@
 // Offline support. Network-first so new updates show up right away when online;
 // falls back to the cache when offline.
-const CACHE = 'pokenotmon-v0.1.0';
+const CACHE = 'pokenotmon-v0.2.0';
 const ASSETS = [
   './',
   './index.html',
@@ -17,6 +17,14 @@ const ASSETS = [
   './js/world.js',
   './js/ui.js',
   './js/audio.js',
+  './js/story.js',
+  './js/screens.js',
+  './js/monster.js',
+  './js/monart.js',
+  './js/battle.js',
+  './js/data/types.js',
+  './js/data/moves.js',
+  './js/data/monsters.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
