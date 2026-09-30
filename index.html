@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PokeNotMon">
+  <meta name="theme-color" content="#0f1a2b">
+  <meta name="format-detection" content="telephone=no">
+  <title>PokeNotMon</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="stage" class="landscape">
+      <div id="view">
+        <canvas id="game"></canvas>
+        <div id="banner"></div>
+        <div id="overlay"></div>
+        <div id="save-indicator">Saving…</div>
+      </div>
+      <div id="controls">
+        <div id="dpad" aria-label="D-pad">
+          <div class="arm up"></div>
+          <div class="arm down"></div>
+          <div class="arm left"></div>
+          <div class="arm right"></div>
+          <div class="hub"></div>
+          <div class="knob"></div>
+        </div>
+        <div id="ab">
+          <button id="btn-b" class="round-btn" aria-label="B">B</button>
+          <button id="btn-a" class="round-btn" aria-label="A">A</button>
+        </div>
+        <button id="btn-menu" aria-label="Menu"><span></span><span></span><span></span></button>
+      </div>
+      <div id="screen"></div>
+      <div id="toast"></div>
+      <div id="fade"></div>
+    </div>
+  </div>
+  <noscript>PokeNotMon needs JavaScript to run.</noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

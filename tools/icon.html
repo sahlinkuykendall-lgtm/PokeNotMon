@@ -1,0 +1,75 @@
+<!doctype html>
+<meta charset="utf-8">
+<body style="margin:0;background:#333">
+<script>
+// Draws the app icon (Sparkrill, the Electric starter-line mascot) as pixel art.
+function pixelize(c, outline) {
+  const g = c.getContext('2d'), w = c.width, h = c.height;
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;
+  const solid = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) solid[i] = d[i * 4 + 3] ? 1 : 0;
+  const [r, gg, b] = [0x1d, 0x1a, 0x2a];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (solid[i]) continue;
+    if ((x > 0 && solid[i - 1]) || (x < w - 1 && solid[i + 1]) || (y > 0 && solid[i - w]) || (y < h - 1 && solid[i + w])) {
+      d[i * 4] = r; d[i * 4 + 1] = gg; d[i * 4 + 2] = b; d[i * 4 + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+}
+function critter(B) {
+  const c = document.createElement('canvas'); c.width = c.height = B;
+  const g = c.getContext('2d'); const u = B / 64;
+  g.scale(u, u);
+  const poly = (pts, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath(); g.fill(); };
+  const circ = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+  const ell = (x, y, rx, ry, col) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); };
+  // side fins
+  poly([15, 31, 2, 22, 7, 34, 15, 41], '#3a8ad0');
+  poly([49, 31, 62, 22, 57, 34, 49, 41], '#3a8ad0');
+  poly([2, 22, 7, 27, 6, 31], '#ffd23f');
+  poly([62, 22, 57, 27, 58, 31], '#ffd23f');
+  // lightning crest
+  poly([20, 26, 15, 6, 24, 15, 24, 3, 32, 16, 36, 2, 38, 16, 47, 7, 44, 26], '#ffd23f');
+  poly([22, 24, 18, 11, 25, 18], '#f0a81c');
+  // head
+  ell(32, 38, 20, 17, '#4aa8e8');
+  ell(27, 29, 9, 5, '#7cc8f5');
+  ell(32, 48, 12, 6.5, '#d8f1ff');
+  // eyes
+  ell(24, 37, 5, 6, '#ffffff');
+  ell(40, 37, 5, 6, '#ffffff');
+  ell(25, 38, 3, 4, '#1d1a2a');
+  ell(39, 38, 3, 4, '#1d1a2a');
+  circ(24, 36, 1.2, '#ffffff');
+  circ(38, 36, 1.2, '#ffffff');
+  // nostrils + grin with a tiny fang
+  g.fillStyle = '#1d1a2a';
+  g.fillRect(29, 45, 1.5, 1.5); g.fillRect(34, 45, 1.5, 1.5);
+  g.fillRect(26, 49, 12, 1.5);
+  g.fillStyle = '#ffffff'; g.fillRect(35, 50, 2, 2);
+  // cheek sparks
+  poly([13, 44, 17, 41, 16, 44, 20, 42, 16, 47, 17, 44], '#ffd23f');
+  poly([51, 44, 47, 41, 48, 44, 44, 42, 48, 47, 47, 44], '#ffd23f');
+  pixelize(c);
+  return c;
+}
+window.makeIcon = (S) => {
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, S, S);
+  grad.addColorStop(0, '#34c3a8'); grad.addColorStop(1, '#2a4f9e');
+  g.fillStyle = grad; g.fillRect(0, 0, S, S);
+  const rg = g.createRadialGradient(S * 0.5, S * 0.42, 0, S * 0.5, S * 0.42, S * 0.5);
+  rg.addColorStop(0, 'rgba(255,255,255,0.35)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, S, S);
+  const scale = S === 180 ? 3 : S === 192 ? 3 : 8;
+  const B = S / scale;
+  const cr = critter(B);
+  g.imageSmoothingEnabled = false;
+  const size = B * scale * 0.82;
+  g.drawImage(cr, (S - size) / 2, (S - size) / 2 + S * 0.02, size, size);
+  return c.toDataURL('image/png');
+};
+</script>
