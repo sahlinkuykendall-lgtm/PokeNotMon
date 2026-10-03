@@ -559,6 +559,97 @@ function furniture(kind) {
   return { img: c, ax, ay };
 }
 
+function monsterCenter() {
+  const W = 160, H = 152;
+  const c = makeCanvas(W + 2, H + 2);
+  const g = c.getContext('2d');
+  g.translate(1, 1);
+  g.fillStyle = '#fbf6f2'; g.fillRect(4, 70, 152, 82);
+  g.fillStyle = '#eee2dc'; g.fillRect(4, 140, 152, 12);
+  g.fillStyle = '#e8606a'; g.fillRect(4, 70, 152, 8);
+  // roof
+  poly(g, [0, 76, 160, 76, 146, 14, 14, 14], '#e8505c');
+  g.fillStyle = '#c63c48';
+  for (let y = 24; y < 76; y += 10) g.fillRect(0, y, 160, 2);
+  g.fillStyle = '#f48a92'; g.fillRect(14, 12, 132, 5);
+  g.fillStyle = '#a82e3a'; g.fillRect(0, 74, 160, 4);
+  // big sign with a heart
+  g.fillStyle = '#ffffff'; g.fillRect(60, 24, 40, 34);
+  g.fillStyle = '#e8505c';
+  circle(g, 74, 36, 7, '#e8505c'); circle(g, 86, 36, 7, '#e8505c');
+  poly(g, [67, 38, 93, 38, 80, 52], '#e8505c');
+  g.fillStyle = '#ffffff'; g.fillRect(77, 34, 6, 12); g.fillRect(74, 37, 12, 6);
+  // windows
+  const win = (x) => {
+    g.fillStyle = '#c8b8b0'; g.fillRect(x - 2, 90, 34, 28);
+    g.fillStyle = '#9ad4ee'; g.fillRect(x, 92, 30, 24);
+    g.fillStyle = '#d6f0fb'; g.fillRect(x + 3, 95, 7, 5);
+  };
+  win(14); win(116);
+  // door (tile column 2 => x 64..96)
+  g.fillStyle = '#c8b8b0'; g.fillRect(64, 104, 32, 48);
+  g.fillStyle = '#9ad4ee'; g.fillRect(67, 107, 12, 45); g.fillRect(81, 107, 12, 45);
+  g.fillStyle = '#d6f0fb'; g.fillRect(69, 109, 3, 12); g.fillRect(83, 109, 3, 12);
+  g.fillStyle = '#e8606a'; g.fillRect(60, 98, 40, 5);
+  g.fillStyle = '#d8ccc6'; g.fillRect(60, 149, 40, 3);
+  pixelize(c, '#3a1d22');
+  return { img: c, ax: 81, ay: 153 };
+}
+
+function wideCounter(tiles) {
+  const W = tiles * 32;
+  const c = makeCanvas(W + 2, 42);
+  const g = c.getContext('2d');
+  g.translate(1, 1);
+  g.fillStyle = '#f4ecea'; g.fillRect(0, 8, W, 32);
+  g.fillStyle = '#ffffff'; g.fillRect(0, 8, W, 6);
+  g.fillStyle = '#e8606a'; g.fillRect(0, 22, W, 4);
+  g.fillStyle = '#d8ccc6'; g.fillRect(0, 36, W, 4);
+  pixelize(c, '#4a2a2e');
+  return { img: c, ax: W / 2 + 1, ay: 41 };
+}
+
+function centerWall() {
+  const c = makeCanvas(32, 76);
+  const g = c.getContext('2d');
+  g.fillStyle = '#a83a46'; g.fillRect(0, 0, 32, 8);
+  g.fillStyle = '#fbf2ee'; g.fillRect(0, 8, 32, 60);
+  g.fillStyle = '#f6dcd8'; g.fillRect(0, 40, 32, 28);
+  g.fillStyle = '#e8606a'; g.fillRect(0, 38, 32, 3);
+  g.fillStyle = '#c8a8a4'; g.fillRect(0, 68, 32, 8);
+  return { img: c, ax: 16, ay: 76 };
+}
+
+function emoteBubble() {
+  const c = makeCanvas(20, 24);
+  const g = c.getContext('2d');
+  g.translate(1, 1);
+  g.fillStyle = '#ffffff';
+  g.fillRect(1, 0, 16, 16);
+  poly(g, [6, 15, 12, 15, 7, 21], '#ffffff');
+  g.fillStyle = '#e8343c';
+  g.fillRect(7, 2, 4, 8);
+  g.fillRect(7, 12, 4, 3);
+  pixelize(c, '#1d1a2a');
+  return { img: c, ax: 10, ay: 23 };
+}
+
+function itemBall() {
+  const c = makeCanvas(18, 18);
+  const g = c.getContext('2d');
+  g.translate(1, 1);
+  circle(g, 8, 8, 7.5, '#f4f4f4');
+  g.save(); g.beginPath(); g.rect(0, 0, 16, 8); g.clip();
+  circle(g, 8, 8, 7.5, '#e8505c');
+  g.restore();
+  g.fillStyle = '#2a2d44'; g.fillRect(0, 7, 16, 2);
+  circle(g, 8, 8, 2.6, '#2a2d44');
+  circle(g, 8, 8, 1.5, '#ffffff');
+  g.fillStyle = '#ffb0b8'; g.fillRect(4, 3, 3, 2);
+  pixelize(c, '#1d1a2a');
+  return { img: c, ax: 9, ay: 16 };
+}
+
 // ---------------------------------------------------------------------------
 // Trainers / NPC characters (34x42 canvas, feet at the bottom)
 // ---------------------------------------------------------------------------
@@ -576,6 +667,10 @@ export const LOOKS = {
   oldman: { hairStyle: 'bald', hair: '#dcdcdc', skin: '#e8b890', shirt: '#8a6a4a', shirt2: '#6a4a2a', pants: '#5a5a5a', shoes: '#333333' },
   hiker: { hairStyle: 'cap', hat: '#7a5a2a', brim: '#5a3f1a', hair: '#3a2a1a', skin: '#d8a070', shirt: '#6a8a3a', shirt2: '#e0c070', pants: '#5a4a3a', shoes: '#3a2a1a' },
   guard: { hairStyle: 'cap', hat: '#2a3a6a', brim: '#1a2448', hair: '#2a2a2a', skin: '#c89070', shirt: '#2a3a6a', shirt2: '#ffd23f', pants: '#1f2a4a', shoes: '#222222' },
+  nurse: { hairStyle: 'bun', hair: '#f08aa0', skin: '#f5d0b0', shirt: '#ffffff', shirt2: '#e8606a', pants: '#ffffff', shoes: '#e8606a', coat: '#ffffff' },
+  clerk: { hairStyle: 'short', hair: '#2a2a3a', skin: '#e8b88f', shirt: '#4b8ec8', shirt2: '#ffffff', pants: '#2f3a4a', shoes: '#222222' },
+  youngster: { hairStyle: 'cap', hat: '#3a7bd5', brim: '#2c5fa8', hair: '#3a2a1a', skin: '#f5c9a0', shirt: '#f2c94c', shirt2: '#ffffff', pants: '#3b5aa8', shoes: '#d8403a' },
+  camper: { hairStyle: 'short', hair: '#6b3e26', skin: '#d8a070', shirt: '#4a8a3a', shirt2: '#e0c070', pants: '#7a6a4a', shoes: '#3a2a1a' },
   aide: { hairStyle: 'short', hair: '#4a3020', skin: '#f1c29a', shirt: '#5b8def', shirt2: '#ffffff', coat: '#f7f7f7', glasses: '#3a3a4a', pants: '#3a3a4a', shoes: '#333333' },
 };
 
@@ -725,6 +820,12 @@ export class SpriteBank {
       lab: lab(),
       wall_home: wall('home'),
       wall_lab: wall('lab'),
+      wall_center: centerWall(),
+      center: monsterCenter(),
+      counter2: wideCounter(2),
+      counter4: wideCounter(4),
+      emote: emoteBubble(),
+      itemball: itemBall(),
     };
     for (const k of ['bed', 'tv', 'pc', 'table', 'plant', 'bookshelf', 'machine', 'labtable', 'counter']) {
       this.objects[k] = furniture(k);

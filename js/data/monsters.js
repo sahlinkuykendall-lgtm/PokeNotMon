@@ -137,9 +137,16 @@ export const SPECIES = {
   },
   mothwisp: {
     name: 'Mothwisp', types: ['ghost'], base: [40, 30, 40, 60, 55, 50], catch: 190, exp: 58,
+    evo: { item: 'moonstone', into: 'lunamoth' },
     learn: [[1, 'lick'], [1, 'growl'], [6, 'confuseray'], [10, 'shadowsneak'], [15, 'hex'], [20, 'psybeam']],
     dex: 'A ghostly moth drawn to lantern light. Its wing dust makes people drowsy.',
     art: { body: 'blob', size: 0.64, float: true, pal: { main: '#a592e0', belly: '#d8ccff', accent: '#6a5aa6', accent2: '#f2d0ff' }, ears: 'none', tail: 'none', crest: 'antenna', wings: 'moth', eyes: 'big' },
+  },
+  lunamoth: {
+    name: 'Lunamoth', types: ['ghost', 'mythical'], base: [70, 50, 70, 100, 95, 85], catch: 60, exp: 165,
+    learn: [[1, 'lick'], [1, 'growl'], [6, 'confuseray'], [10, 'shadowsneak'], [15, 'hex'], [20, 'psybeam'], [26, 'stardust'], [34, 'moonbeam']],
+    dex: 'Moonlight made its wings glow. It guides lost travelers home on dark nights.',
+    art: { body: 'blob', size: 0.86, float: true, pal: { main: '#7464c4', belly: '#d8ccff', accent: '#fff2b8', accent2: '#c8b8ff' }, ears: 'none', tail: 'none', crest: 'antenna', wings: 'moth', eyes: 'big' },
   },
   toxitoad: {
     name: 'Toxitoad', types: ['poison', 'water'], base: [60, 50, 55, 60, 55, 40], catch: 190, exp: 60,
@@ -149,21 +156,42 @@ export const SPECIES = {
   },
   frostnib: {
     name: 'Frostnib', types: ['ice'], base: [45, 45, 50, 55, 55, 45], catch: 190, exp: 58,
+    evo: { item: 'icestone', into: 'emperice' },
     learn: [[1, 'peck'], [1, 'growl'], [5, 'frostbreath'], [10, 'quickjab'], [15, 'icefang'], [22, 'icebeam']],
     dex: 'A penguin chick that slides everywhere on its belly. Its breath makes tiny snowflakes.',
     art: { body: 'biped', size: 0.66, pal: { main: '#34466e', belly: '#ffffff', accent: '#f2c832', accent2: '#bfe8ff' }, ears: 'none', tail: 'none', crest: 'ice', extras: ['beak'], eyes: 'cute', cheeks: '#8fd0ff' },
   },
+  emperice: {
+    name: 'Emperice', types: ['ice', 'water'], base: [80, 75, 80, 90, 85, 60], catch: 60, exp: 165,
+    learn: [[1, 'peck'], [1, 'growl'], [5, 'frostbreath'], [10, 'quickjab'], [15, 'icefang'], [20, 'bubblebeam'], [26, 'icebeam'], [34, 'aquatail']],
+    dex: 'A proud emperor of the frozen sea. It rules its colony with a single icy stare.',
+    art: { body: 'biped', size: 0.92, pal: { main: '#24345a', belly: '#ffffff', accent: '#f2c832', accent2: '#bfe8ff' }, ears: 'none', tail: 'none', crest: 'ice', extras: ['beak'], eyes: 'fierce' },
+  },
   kettlekin: {
     name: 'Kettlekin', types: ['metal', 'fire'], base: [55, 55, 75, 70, 60, 35], catch: 150, exp: 70,
+    evo: { item: 'firestone', into: 'brewlord' },
     learn: [[1, 'tackle'], [1, 'irondefense'], [5, 'ember'], [10, 'metalclaw'], [16, 'flamefang'], [22, 'ironhead']],
     dex: 'An old kettle that came to life after a century of tea parties. It whistles when angry.',
     art: { body: 'kettle', size: 0.78, pal: { main: '#b4bec8', belly: '#dfe6ec', accent: '#e8402a', accent2: '#7a8692' }, eyes: 'cute' },
   },
+  brewlord: {
+    name: 'Brewlord', types: ['metal', 'fire'], base: [80, 80, 105, 95, 80, 40], catch: 60, exp: 170,
+    learn: [[1, 'tackle'], [1, 'irondefense'], [5, 'ember'], [10, 'metalclaw'], [16, 'flamefang'], [22, 'ironhead'], [28, 'heatwave']],
+    dex: 'A grand old teapot that boils with fury. Its steam whistle can be heard for miles.',
+    art: { body: 'kettle', size: 1, pal: { main: '#8a96a6', belly: '#cfd8e0', accent: '#ff8a2a', accent2: '#56606e' }, eyes: 'fierce' },
+  },
   psyfox: {
     name: 'Psyfox', types: ['psychic'], base: [45, 40, 40, 70, 60, 70], catch: 120, exp: 66,
+    evo: { item: 'moonstone', into: 'mystifox' },
     learn: [[1, 'scratch'], [1, 'growl'], [5, 'confusion'], [10, 'quickjab'], [15, 'calmmind'], [20, 'psybeam']],
     dex: 'The gem on its forehead glows when it reads minds. It always knows where you hid the snacks.',
     art: { body: 'quad', size: 0.74, pal: { main: '#e48ad8', belly: '#ffe6fa', accent: '#7ee0ff', accent2: '#b85aa8' }, ears: 'pointy', tail: 'fluffy', crest: 'gem', eyes: 'cute' },
+  },
+  mystifox: {
+    name: 'Mystifox', types: ['psychic', 'mythical'], base: [70, 60, 65, 105, 90, 100], catch: 60, exp: 170,
+    learn: [[1, 'scratch'], [1, 'growl'], [5, 'confusion'], [10, 'quickjab'], [15, 'calmmind'], [20, 'psybeam'], [28, 'stardust'], [36, 'moonbeam']],
+    dex: 'Its mane shimmers like the night sky. Legends say it can glimpse tomorrow.',
+    art: { body: 'quad', size: 0.94, pal: { main: '#c47ade', belly: '#f8eaff', accent: '#7ee0ff', accent2: '#8a4ab0', mane: '#f4d4ff' }, ears: 'pointy', tail: 'fluffy', crest: 'gem', extras: ['cloudMane'], eyes: 'fierce' },
   },
   lumiwisp: {
     name: 'Lumiwisp', types: ['mythical'], base: [80, 80, 80, 100, 100, 90], catch: 3, exp: 250,

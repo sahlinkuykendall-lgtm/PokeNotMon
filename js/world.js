@@ -2,6 +2,8 @@
 
 import { TILE, WALK_SPEED, RUN_SPEED } from './config.js';
 import { MAPS, TILES } from './maps.js';
+import { trainerBattle, trainerTalk, trainerDefeated } from './story.js';
+import { PRISM_CHANCE } from './monster.js';
 
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 const OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
@@ -59,6 +61,10 @@ class NPC extends Character {
     this.home = { x: this.wx, y: this.wy };
     this.timer = 1 + Math.random() * 2.5;
     this.target = null;
+    this.emote = 0;
+    this.scripted = null;
+    // Item balls and other objects use a sprite instead of a trainer look.
+    if (def.sprite) { this.character = false; this.object = true; }
   }
 }
 
@@ -66,6 +72,7 @@ class NPC extends Character {
 class Roamer {
   constructor(species, level, wx, wy) {
     this.monster = true;
+    this.prism = Math.random() < PRISM_CHANCE;
     this.species = species;
     this.level = level;
     this.wx = wx; this.wy = wy;
@@ -234,7 +241,10 @@ export class World {
     }
     p.frame = moved ? WALK_CYCLE[Math.floor(p.dist / 13) % 4] : 0;
 
-    if (moved) this.onPlayerMoved();
+    if (moved) {
+      this.onPlayerMoved();
+      if (this.checkTrainerSight()) return;
+    }
 
     for (const n of this.npcs) this.updateNPC(n, dt);
     for (const r of this.roamers) this.updateRoamer(r, dt);
@@ -243,7 +253,7 @@ export class World {
       for (const r of this.roamers) {
         if (Math.abs(r.wx - p.wx) < 20 && Math.abs(r.wy - p.wy) < 16) {
           this.removeRoamer(r);
-          this.game.startWildBattle(r.species, r.level);
+          this.game.startWildBattle(r.species, r.level, r.prism);
           return;
         }
       }
@@ -307,7 +317,76 @@ export class World {
     this.effects = this.effects.filter((fx) => fx.life > 0 && fx.z > 0);
   }
 
+  checkTrainerSight() {
+    if (!this.game.canBattle()) return false;
+    const p = this.player;
+    const ptx = Math.floor(p.wx / TILE), pty = Math.floor((p.wy - 4) / TILE);
+    for (const n of this.npcs) {
+      const tr = n.def.trainer;
+      if (!tr || trainerDefeated(this.game, n.def.id)) continue;
+      const ntx = Math.floor(n.wx / TILE), nty = Math.floor((n.wy - 4) / TILE);
+      const [dx, dy] = DIRS[n.dir];
+      for (let i = 1; i <= tr.sight; i++) {
+        const tx = ntx + dx * i, ty = nty + dy * i;
+        if (this.solidTile(tx, ty)) break;
+        if (tx === ptx && ty === pty) {
+          this.game.runScript(() => trainerBattle(this.game, n, true));
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Walks a trainer up to the player. Resolves when it arrives.
+  approachPlayer(n) {
+    const p = this.player;
+    const [dx, dy] = DIRS[n.dir];
+    let tx = n.wx, ty = n.wy;
+    if (dx) tx = p.wx - dx * TILE;
+    if (dy) ty = p.wy - dy * TILE;
+    if (Math.hypot(tx - n.wx, ty - n.wy) < 4) return Promise.resolve();
+    return new Promise((resolve) => { n.scripted = { x: tx, y: ty, resolve }; });
+  }
+
+  facePlayerTo(n) {
+    const p = this.player;
+    const dx = n.wx - p.wx, dy = n.wy - p.wy;
+    p.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+    n.dir = OPPOSITE[p.dir];
+    p.frame = 0;
+  }
+
+  // Runs while a script has control: NPCs can still walk and emotes still fade.
+  tickScripted(dt) {
+    for (const n of this.npcs) {
+      if (n.emote > 0) n.emote = Math.max(0, n.emote - dt);
+      if (n.scripted) this.stepScripted(n, dt);
+    }
+    this.updateEffects(dt);
+    this.game.renderer.updateCamera(this.player.wx, this.player.wy - 12, dt);
+  }
+
+  stepScripted(n, dt) {
+    const t = n.scripted;
+    const dx = t.x - n.wx, dy = t.y - n.wy;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.min(dist, 110 * dt);
+    if (dist > 0.5) {
+      n.wx += (dx / dist) * step;
+      n.wy += (dy / dist) * step;
+      n.dist += step;
+      n.frame = WALK_CYCLE[Math.floor(n.dist / 13) % 4];
+    }
+    if (dist <= 0.5) {
+      n.frame = 0;
+      n.scripted = null;
+      t.resolve();
+    }
+  }
+
   updateNPC(n, dt) {
+    if (n.emote > 0) n.emote = Math.max(0, n.emote - dt);
     const r = n.def.wander || 0;
     if (!r) return;
     if (n.target) {
@@ -389,6 +468,7 @@ export class World {
       best.dir = OPPOSITE[p.dir];
       best.target = null;
       best.frame = 0;
+      if (best.def.trainer) { this.game.runScript(() => trainerTalk(this.game, best)); return; }
       if (best.def.script) { this.game.runScript(() => best.def.script(this.game, best)); return; }
       const lines = best.def.talk ? best.def.talk(this.game) : best.def.lines;
       this.game.ui.dialog(lines, { speaker: best.def.name });

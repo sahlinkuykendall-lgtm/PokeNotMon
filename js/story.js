@@ -40,7 +40,8 @@ export async function starterSequence(game) {
   game.addItem('orb', 5);
   game.addItem('potion', 3);
   game.audio.sfx('save');
-  await ui.dialog(['{name} received 5 Capture Orbs and 3 Potions!']);
+  await ui.dialog(['{name} received 5 Capture Orbs, 3 Potions and a Monster Dex!']);
+  await ui.dialog(['The Monster Dex records every monster you see and catch.', 'Fill it up for me, would you?'], PROF);
   await ui.dialog([
     'Throw a Capture Orb at a wild monster to catch it.',
     'Weaken it first. The lower its HP, the better your chances!',
@@ -74,7 +75,7 @@ export async function starterSequence(game) {
     "That Kai... Well, I've healed your monster for you.",
     'Wild monsters live in the tall grass on Route 1, north of town.',
     'Catch some and build a strong team!',
-    'When your monsters get tired, head home. Your mom can help them rest.',
+    'When your monsters get tired, visit the Monster Center next door. It heals them for free!',
   ], PROF);
   game.saveGame(false);
 }
@@ -117,4 +118,87 @@ async function restParty(game) {
   game.audio.sfx('heal');
   await new Promise((r) => setTimeout(r, 700));
   await game.ui.fade(false);
+}
+
+// ---------------------------------------------------------------------------
+// Monster Center, shop, PC, items, trainers
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function nurseTalk(game) {
+  const ui = game.ui;
+  const N = { speaker: 'Nurse Clover' };
+  const c = await ui.ask(['Welcome to the Monster Center!', 'Shall I restore your monsters to full health?'], ['Yes', 'No'], N);
+  if (c !== 0) { await ui.dialog(['We hope to see you again!'], N); return; }
+  if (!game.data.party.length) { await ui.dialog(["Oh! You don't have any monsters with you yet."], N); return; }
+  await ui.dialog(["Okay, I'll take your monsters for a moment."], N);
+  await restParty(game);
+  game.flags.respawn = { map: 'center', x: 6, y: 3.7, dir: 'up' };
+  await ui.dialog(['Thank you for waiting!', 'Your monsters are fighting fit. We hope to see you again!'], N);
+  game.saveGame(false);
+}
+
+export async function clerkTalk(game) {
+  await game.ui.dialog(['Welcome! How may I help you?'], { speaker: 'Clerk' });
+  await game.ui.shopScreen();
+  await game.ui.dialog(['Please come again!'], { speaker: 'Clerk' });
+}
+
+export async function usePC(game) {
+  await game.ui.dialog(['{name} turned on the PC.']);
+  if (!game.data.party.length && !game.data.box.length) {
+    await game.ui.dialog(['The Monster Storage System is empty.', 'Catch some monsters first!']);
+    return;
+  }
+  game.audio.sfx('select');
+  await game.ui.boxScreen();
+}
+
+export async function pickUpItem(game, npc) {
+  const def = npc.def;
+  const it = game.items[def.item];
+  game.flags.items = game.flags.items || {};
+  game.flags.items[def.id] = true;
+  game.addItem(def.item, def.count || 1);
+  game.world.npcs = game.world.npcs.filter((n) => n !== npc);
+  game.audio.sfx('pickup');
+  const what = def.count > 1 ? `${def.count} ${it.name}s` : `a ${it.name}`;
+  await game.ui.dialog([`{name} found ${what}!`, `{name} put it in the Bag.`]);
+}
+
+export function trainerDefeated(game, id) {
+  return !!(game.flags.trainers && game.flags.trainers[id]);
+}
+
+export async function trainerBattle(game, npc, spotted) {
+  const def = npc.def;
+  const tr = def.trainer;
+  const world = game.world;
+  if (spotted) {
+    game.audio.sfx('spotted');
+    npc.emote = 1.1;
+    await wait(1000);
+    await world.approachPlayer(npc);
+  }
+  world.facePlayerTo(npc);
+  await game.ui.dialog(tr.intro, { speaker: def.name });
+  const foes = tr.team.map(([sp, lv]) => createMonster(sp, lv));
+  const out = await game.startBattle({
+    trainer: { name: def.name, look: def.look, prize: tr.prize, loseLines: tr.lose },
+    foes,
+    theme: 'field',
+  });
+  if (out.result === 'win') {
+    game.flags.trainers = game.flags.trainers || {};
+    game.flags.trainers[def.id] = true;
+    game.saveGame(false);
+  }
+}
+
+export async function trainerTalk(game, npc) {
+  if (trainerDefeated(game, npc.def.id)) {
+    await game.ui.dialog(npc.def.trainer.after, { speaker: npc.def.name });
+    return;
+  }
+  await trainerBattle(game, npc, false);
 }

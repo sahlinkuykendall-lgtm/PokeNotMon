@@ -14,7 +14,7 @@ import { Battle } from './battle.js';
 import { SPECIES } from './data/monsters.js';
 import { MOVES } from './data/moves.js';
 import {
-  ITEMS, createMonster, healFully, isAlive, monName, recalc, movesAtLevel, reviveMonster, serializeMonster,
+  ITEMS, PRISM_CHANCE, stoneEvolution, createMonster, healFully, isAlive, monName, recalc, movesAtLevel, reviveMonster, serializeMonster,
 } from './monster.js';
 
 installScreens(UI);
@@ -229,9 +229,22 @@ class Game {
 
   // ------------------------------------------------------------------ battles
 
-  startWildBattle(species, level) {
+  startWildBattle(species, level, prism) {
     const theme = this.world.map.outdoor ? 'field' : 'lab';
-    return this.startBattle({ foes: [createMonster(species, level)], theme });
+    const isPrism = prism ?? Math.random() < PRISM_CHANCE;
+    return this.startBattle({ foes: [createMonster(species, level, { prism: isPrism })], theme });
+  }
+
+  // Uses an evolution stone on a party monster (from the Bag).
+  async useStone(itemId, m) {
+    const into = stoneEvolution(m, itemId);
+    if (!into) return false;
+    this.useItem(itemId);
+    const evolved = await this.ui.evolutionScreen(m, into, true);
+    if (evolved) for (const id of movesAtLevel(m.species, m.level)) await this.learnMove(m, id);
+    this.audio.playMusic(this.world.map.music);
+    this.saveGame(false);
+    return true;
   }
 
   async startBattle(opts) {
@@ -290,14 +303,23 @@ class Game {
     const lost = Math.floor(this.data.money * 0.1);
     this.data.money -= lost;
     this.healParty();
-    this.world.load('playerHouse', 2.5, 3.8, 'down');
+    const r = this.flags.respawn;
+    if (r && MAPS[r.map]) this.world.load(r.map, r.x, r.y, r.dir);
+    else this.world.load('playerHouse', 2.5, 3.8, 'down');
     this.audio.playMusic(this.world.map.music);
     await wait(500);
     await this.ui.fade(false);
-    await this.ui.dialog([
-      'Oh my! {name}, you look exhausted!',
-      "Your monsters are all patched up now. Please be careful out there!",
-    ], { speaker: 'Mom' });
+    if (this.world.map.id === 'center') {
+      await this.ui.dialog([
+        "You're back! Your monsters were brought in fainted.",
+        "We've restored them to full health. Please be careful out there!",
+      ], { speaker: 'Nurse Clover' });
+    } else {
+      await this.ui.dialog([
+        'Oh my! {name}, you look exhausted!',
+        "Your monsters are all patched up now. Please be careful out there!",
+      ], { speaker: 'Mom' });
+    }
     if (lost) await this.ui.dialog([`(You dropped $${lost} while hurrying home...)`]);
     this.saveGame(false);
   }
@@ -369,6 +391,8 @@ class Game {
     } else if (this.state === 'world' && !this.transitioning && !this.scriptRunning) {
       if (input.consume('menu')) ui.openPauseMenu();
       else world.update(dt, input);
+    } else if (this.state === 'world' && this.scriptRunning) {
+      world.tickScripted(dt);
     }
 
     if (this.state === 'world' || this.state === 'battle') this.data.playTime += dt;

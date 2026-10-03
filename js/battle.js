@@ -4,7 +4,7 @@ import { MOVES } from './data/moves.js';
 import { SPECIES } from './data/monsters.js';
 import { TYPE_INFO, effectiveness } from './data/types.js';
 import {
-  monName, isAlive, expForLevel, recalc, movesAtLevel, expProgress, STATUS_INFO, STAT_NAMES,
+  monName, monLabel, isAlive, expForLevel, recalc, movesAtLevel, expProgress, STATUS_INFO, STAT_NAMES, ITEMS, applyItem,
 } from './monster.js';
 import { Layout } from './layout.js';
 
@@ -178,7 +178,7 @@ export class Battle {
     const m = side.mon;
     if (!m) { box.style.display = 'none'; return; }
     box.style.display = '';
-    box.querySelector('.nm').textContent = monName(m);
+    box.querySelector('.nm').textContent = monLabel(m);
     box.querySelector('.lv').textContent = 'Lv' + m.level;
     const st = box.querySelector('.st');
     const info = STATUS_INFO[m.status];
@@ -481,7 +481,8 @@ export class Battle {
     if (!side.mon || !side.visible || side.blink || side.scale <= 0.01) return;
     const art = this.game.monArt;
     const id = side.mon.species;
-    const img = side.white ? art.white(id, which) : which === 'front' ? art.front(id) : art.back(id);
+    const prism = side.mon.prism;
+    const img = side.white ? art.white(id, which) : which === 'front' ? art.front(id, prism) : art.back(id, prism);
     const sc = (p.size / 64) * side.scale;
     const bob = side.scale === 1 && !side.dy ? Math.round(Math.sin(this.time * 2.4 + (which === 'front' ? 0 : 1.5)) * 1.2) : 0;
     const x = p.x + side.dx;
@@ -638,6 +639,15 @@ export class Battle {
     }
   }
 
+  async prismSparkle(side) {
+    const c = this.center(side);
+    for (let i = 0; i < 4; i++) {
+      this.sfx('sparkle');
+      this.burst({ x: c.x + (rand() - 0.5) * 50, y: c.y + (rand() - 0.5) * 40 }, 'mythical', 8, 90);
+      await this.wait(0.18);
+    }
+  }
+
   // ------------------------------------------------------------------ flow
 
   async run() {
@@ -659,7 +669,9 @@ export class Battle {
       await this.tween(0.8, (p) => { this.foe.dx = (1 - easeOut(p)) * -L.W * 0.8; });
       this.hud.foe.style.display = '';
       this.game.dexSee(this.foe.mon.species);
+      if (this.foe.mon.prism) await this.prismSparkle(this.foe);
       await this.say(`A wild ${monName(this.foe.mon)} appeared!`);
+      if (this.foe.mon.prism) await this.say(`✨ Whoa! It's a rare Prism ${monName(this.foe.mon)}! It looks stronger than usual!`, { wait: true });
     }
     const first = this.party.find(isAlive);
     await this.sendOut(this.me, first, `Go! ${monName(first)}!`);
@@ -790,8 +802,8 @@ export class Battle {
       const mon = this.party[act.index];
       await this.sendOut(this.me, mon, `Go! ${monName(mon)}!`);
     } else if (act.kind === 'item') {
-      if (act.item === 'orb') await this.throwOrb();
-      else await this.useHealItem(act);
+      if (ITEMS[act.item].catch) await this.throwOrb(act.item);
+      else await this.useBattleItem(act);
     } else if (act.kind === 'run') {
       this.runAttempts++;
       const mine = this.stat(this.me, 'spe'), theirs = this.stat(this.foe, 'spe');
@@ -814,19 +826,19 @@ export class Battle {
     side.white = false;
   }
 
-  async useHealItem(act) {
-    const item = this.game.items[act.item];
+  async useBattleItem(act) {
+    const item = ITEMS[act.item];
     const mon = this.party[act.target];
     this.game.useItem(act.item);
-    const before = mon.hp;
-    mon.hp = Math.min(mon.stats.hp, mon.hp + item.heal);
-    this.sfx('heal');
-    await this.say(`You used a ${item.name}.`, { hold: 0.5 });
+    await this.say(`You used a ${item.name}.`, { hold: 0.4 });
+    const r = applyItem(act.item, mon);
+    if (r.ok) this.sfx('heal');
     if (mon === this.me.mon) {
       this.aura(this.me, 'grass', true);
-      await this.animateHp(this.me, mon.hp);
+      this.updateHud('me');
+      if (r.hpChanged) await this.animateHp(this.me, mon.hp);
     }
-    await this.say(`${monName(mon)} recovered ${mon.hp - before} HP!`);
+    await this.say(r.msg);
   }
 
   // ------------------------------------------------------------------ moves
@@ -1147,15 +1159,16 @@ export class Battle {
 
   // ------------------------------------------------------------------ catching
 
-  async throwOrb() {
+  async throwOrb(itemId = 'orb') {
     const g = this.game;
-    g.useItem('orb');
+    const orbItem = ITEMS[itemId];
+    g.useItem(itemId);
     const L = this.layout();
     const foe = this.foe;
     const target = { x: L.foe.x, y: L.foe.y - L.foe.size * 0.45 };
     const start = { x: L.me.x + 20, y: L.me.y - L.me.size * 0.9 };
     this.orb = { x: start.x, y: start.y, rot: 0, visible: true };
-    const talk = this.say(`${g.data.name} threw a Capture Orb!`, { hold: 0.2 });
+    const talk = this.say(`${g.data.name} threw a ${orbItem.name}!`, { hold: 0.2 });
     this.sfx('throw');
     await this.tween(0.55, (p) => {
       this.orb.x = start.x + (target.x - start.x) * p;
@@ -1178,7 +1191,7 @@ export class Battle {
     const m = foe.mon;
     const sp = SPECIES[m.species];
     const statusBonus = m.status === 'slp' || m.status === 'frz' ? 2 : m.status ? 1.5 : 1;
-    const a = ((3 * m.stats.hp - 2 * m.hp) * sp.catch * statusBonus) / (3 * m.stats.hp);
+    const a = ((3 * m.stats.hp - 2 * m.hp) * sp.catch * statusBonus * (orbItem.catch || 1)) / (3 * m.stats.hp);
     const p = Math.min(1, a / 255);
     let shakes = 0;
     while (shakes < 4 && rand() < Math.pow(p, 0.25)) shakes++;
@@ -1195,7 +1208,7 @@ export class Battle {
     if (caught) {
       this.sfx('caught');
       this.burst({ x: this.orb.x, y: this.orb.y - 10 }, 'mythical', 18, 140);
-      await this.say(`Gotcha! ${monName(m)} was caught!`, { wait: true });
+      await this.say(`Gotcha! ${monLabel(m)} was caught!`, { wait: true });
       const where = g.addCaughtMonster(m);
       if (where === 'box') await this.say(`${monName(m)} was sent to the PC Box.`);
       this.result = 'caught';

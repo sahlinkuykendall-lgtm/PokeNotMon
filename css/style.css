@@ -518,3 +518,43 @@ button { font-family: inherit; color: inherit; }
 @keyframes encounter {
   0% { background: #fff; } 14% { background: #000; } 28% { background: #fff; } 42% { background: #000; } 56% { background: #fff; } 70%, 100% { background: #000; }
 }
+
+/* ======================= Phase 3: shop, dex, PC, prism ======================= */
+.money-chip {
+  position: absolute; top: calc(14px + var(--safe-t, 0px)); left: calc(14px + var(--safe-l, 0px));
+  background: #ffd84a; color: var(--ink); font-weight: 700; font-size: 18px;
+  padding: 6px 14px; border-radius: 12px; border: 3px solid var(--frame); box-shadow: 0 3px 0 rgba(0,0,0,.3);
+}
+.shop-tabs { margin-bottom: 10px; }
+.qty-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.qty-row .big-btn { width: 56px; padding: 6px 0; font-size: 24px; }
+.qty { font-size: 28px; font-weight: 700; min-width: 48px; text-align: center; }
+.qty-total { text-align: center; font-size: 17px; color: #4a4f68; }
+
+.dex-count { color: #c9d3f5; margin: -6px 0 10px; font-size: 15px; }
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; width: min(900px, 100%); }
+.dex-card {
+  display: flex; flex-direction: column; align-items: center; padding: 4px 4px 6px;
+  background: var(--paper); border: 3px solid var(--frame); border-radius: 12px; color: var(--ink);
+  font-size: 13px; box-shadow: 0 3px 0 rgba(0,0,0,.3);
+}
+.dex-card.unseen { background: #d8dcea; }
+.dex-card.unseen .mon-canvas { opacity: .55; }
+.dex-card.focus { box-shadow: 0 0 0 4px #ffd84a; }
+.dex-no { font-size: 11px; color: #6a6f88; }
+.dex-caught { color: #e8505c; font-style: normal; }
+.base-stats { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.base-stats > div { display: grid; grid-template-columns: 64px 1fr 32px; align-items: center; gap: 6px; }
+.bs-bar { height: 8px; background: #e2e4ee; border-radius: 4px; overflow: hidden; }
+.bs-bar div { height: 100%; background: linear-gradient(90deg, #4db8f0, #4ccf5a); }
+
+.box-wrap { display: flex; gap: 14px; width: min(900px, 100%); align-items: flex-start; }
+.portrait .box-wrap { flex-direction: column; }
+.box-col { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; width: 100%; }
+.box-col h2 { margin: 0; font-size: 18px; color: #fff; }
+.pcard.mini .mon-canvas { width: 57px; height: 54px; }
+.box-empty { color: #c9d3f5; font-size: 14px; padding: 8px; }
+.prism-tag { font-size: 13px; font-weight: 700; color: #b0459a; background: #ffe6f6; padding: 2px 8px; border-radius: 8px; }
+.panel-screen > * { flex-shrink: 0; }
+.shop-tabs button { color: var(--ink); }
+.shop-tabs button.on { color: #fff; }

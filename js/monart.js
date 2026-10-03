@@ -442,6 +442,38 @@ function mirror(src) {
   return c;
 }
 
+// Recolors a sprite for Prism variants by rotating the hue of colorful pixels.
+function prismize(src) {
+  const c = makeCanvas(src.width, src.height);
+  const g = c.getContext('2d');
+  g.drawImage(src, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255;
+    const max = Math.max(r, gg, b), min = Math.min(r, gg, b);
+    const l = (max + min) / 2;
+    const delta = max - min;
+    if (delta < 0.08) continue; // keep outlines, whites and greys
+    const sat = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+    let h;
+    if (max === r) h = ((gg - b) / delta) % 6;
+    else if (max === gg) h = (b - r) / delta + 2;
+    else h = (r - gg) / delta + 4;
+    h = (h * 60 + 150 + 360) % 360;
+    const C = (1 - Math.abs(2 * l - 1)) * Math.min(1, sat * 1.1);
+    const X = C * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m0 = l - C / 2;
+    const [r1, g1, b1] = h < 60 ? [C, X, 0] : h < 120 ? [X, C, 0] : h < 180 ? [0, C, X] : h < 240 ? [0, X, C] : h < 300 ? [X, 0, C] : [C, 0, X];
+    d[i] = Math.round((r1 + m0) * 255);
+    d[i + 1] = Math.round((g1 + m0) * 255);
+    d[i + 2] = Math.round((b1 + m0) * 255);
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
 export class MonsterArt {
   constructor() { this.cache = new Map(); }
 
@@ -451,7 +483,8 @@ export class MonsterArt {
     return v;
   }
 
-  front(id) {
+  front(id, prism = false) {
+    if (prism) return this._get('pf:' + id, () => prismize(this.front(id)));
     return this._get('f:' + id, () => {
       const c = makeCanvas(W, H);
       drawMonster(c.getContext('2d'), id, false);
@@ -459,7 +492,8 @@ export class MonsterArt {
     });
   }
 
-  back(id) {
+  back(id, prism = false) {
+    if (prism) return this._get('pb:' + id, () => prismize(this.back(id)));
     return this._get('b:' + id, () => {
       const c = makeCanvas(W, H);
       drawMonster(c.getContext('2d'), id, true);
@@ -469,10 +503,14 @@ export class MonsterArt {
 
   white(id, which = 'front') { return this._get('w:' + which + id, () => tint(this[which](id), '#ffffff')); }
   red(id, which = 'front') { return this._get('r:' + which + id, () => tint(this[which](id), '#ff6a6a')); }
+  shadow(id) { return this._get('s:' + id, () => tint(this.front(id), '#2a2d44')); }
 
   // For the overworld: the front sprite drawn at about half size.
-  overworld(id) {
-    return this._get('o:' + id, () => ({ img: this.front(id), ax: 38, ay: 70, scale: Math.max(0.45, Math.min(0.8, 0.52 / (SPECIES[id].art.size || 1))) }));
+  overworld(id, prism = false) {
+    return this._get('o:' + id + (prism ? 'p' : ''), () => ({
+      img: this.front(id, prism), ax: 38, ay: 70,
+      scale: Math.max(0.45, Math.min(0.8, 0.52 / (SPECIES[id].art.size || 1))),
+    }));
   }
 
   orb() {

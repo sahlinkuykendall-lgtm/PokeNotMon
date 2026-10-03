@@ -1,5 +1,5 @@
-export const VERSION = '0.2.0';
-export const PHASE = 2;
+export const VERSION = '0.3.0';
+export const PHASE = 3;
 
 // World tiles are 32x32 "world pixels".
 export const TILE = 32;

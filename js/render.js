@@ -234,8 +234,16 @@ export class Renderer {
     for (const b of list) {
       const p = this.project(b.wx, b.wy);
       if (!(p.s > 0)) continue;
+      if (b.object) {
+        const spr = sprites.get(b.def.sprite);
+        if (spr) this.drawSprite(spr, p, Math.abs(Math.sin(time * 2)) * 1.5);
+        continue;
+      }
       if (b.monster) {
-        const spr = this.monArt.overworld(b.species);
+        const spr = this.monArt.overworld(b.species, b.prism);
+        if (b.prism && Math.random() < 0.08) {
+          world.effects.push({ wx: b.wx + (Math.random() - 0.5) * 24, wy: b.wy, z: 10 + Math.random() * 20, vx: 0, vz: 20, life: 0.5, color: Math.random() < 0.5 ? '#fff6a0' : '#ffffff' });
+        }
         const hop = Math.abs(Math.sin(b.hop / 9)) * 5 + Math.abs(Math.sin(time * 2 + b.home.x)) * 1.2;
         ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath();
@@ -251,6 +259,11 @@ export class Renderer {
         ctx.ellipse(p.x, p.y - 1 * p.s, 11 * p.s, 4.5 * p.s * PERSP.K, 0, 0, Math.PI * 2);
         ctx.fill();
         this.drawSprite(spr, p, b.bob || 0);
+        if (b.emote > 0) {
+          const e = sprites.get('emote');
+          const pop = b.emote > 1.1 ? 1 : Math.min(1, (1.1 - b.emote) * 8);
+          this.drawSprite(e, { x: p.x, y: p.y - 42 * p.s, s: p.s * 1.7 * Math.max(0.3, pop) });
+        }
         continue;
       }
       let name = b.name;

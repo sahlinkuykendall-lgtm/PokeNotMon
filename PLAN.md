@@ -88,16 +88,19 @@ Each phase ends with something playable on the phone. Test it, give feedback, th
 - Mom and your bed heal your team
 - Battle, rival and victory music
 
-### Phase 3: Trainer Life
-- Party of 6 + storage box (PC)
-- Bag & items: potions, status cures, capture orbs, evolution stones
-- Money, shops, heal centers
-- Monster Dex with descriptions and seen/caught tracking
-- Route trainers with line-of-sight "!" challenges
-- Rare "Prism" variants
-- Level-cap guards and early field ability
+### ✅ Phase 3: Trainer Life
+- Monster Center in Mossbrook: Nurse Clover heals your team (and becomes your blackout respawn point), a PC, and a shop counter
+- Shop with buying and selling: Capture/Great Orbs, Potions, Super Potions, status cures, Full Heal, Revive, evolution stones
+- PC Box: deposit, withdraw, release (also on the PC in your bedroom)
+- Bag works in and out of battle: healing, curing status, reviving, evolution stones
+- Stone evolutions: Psyfox → Mystifox and Mothwisp → Lunamoth (Moon Stone), Frostnib → Emperice (Ice Stone), Kettlekin → Brewlord (Fire Stone). 29 monsters total
+- Monster Dex: seen/caught tracking, silhouettes, entries with base stats and evolution info
+- Route 1 trainers (Hiker Bram, Lass Poppy, Youngster Tim, Camper Leo) who spot you with a "!", walk over and battle for prize money
+- Items to find on Route 1 (including a Moon Stone)
+- Rare ✨ Prism variants (1 in 64): recolored, +10% stats, sparkle intro; wandering monsters can be Prism too
 
 ### Phase 4: Gyms 1–3
+- Level-cap guards and the first field ability (moved here from Phase 3)
 - Cinderpeak City (Fire), plus two more towns and routes
 - Gym trainers and gym leaders, badges on the trainer card
 - Gates/guards and field abilities to reach new areas

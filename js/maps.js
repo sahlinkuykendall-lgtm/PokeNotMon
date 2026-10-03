@@ -2,7 +2,7 @@
 // Buildings and furniture are placed as objects on top of the tile grid.
 // NPC and warp positions are in tile units.
 
-import { profTalk, momTalk, bedRest } from './story.js';
+import { profTalk, momTalk, bedRest, nurseTalk, clerkTalk, usePC, pickUpItem } from './story.js';
 
 export const TILES = {
   '.': { ground: 'grass' },
@@ -49,8 +49,8 @@ export const MAPS = {
       '##......=........=......##',
       '##......=........=......##',
       '##......=........=......##',
-      '##......=........=s.....##',
-      '##......=....=...=......##',
+      '##......=........=s.=...##',
+      '##......=....=...====...##',
       '##......==========.,,,..##',
       '##.~~~~...............,.##',
       '##.~~~~.......,,........##',
@@ -62,10 +62,12 @@ export const MAPS = {
       { sprite: 'house_red', x: 4, y: 5, w: 4, h: 3, door: [5, 7] },
       { sprite: 'house_blue', x: 18, y: 5, w: 4, h: 3 },
       { sprite: 'lab', x: 11, y: 13, w: 5, h: 4, door: [13, 16] },
+      { sprite: 'center', x: 18, y: 12, w: 5, h: 4, door: [20, 15] },
     ],
     warps: [
       { x: 5, y: 7, w: 1, h: 1, to: 'playerHouse', ax: 5, ay: 6.6, dir: 'up', sfx: 'door' },
       { x: 13, y: 16, w: 1, h: 1, to: 'lab', ax: 6, ay: 9.5, dir: 'up', sfx: 'door' },
+      { x: 20, y: 15, w: 1, h: 1, to: 'center', ax: 6, ay: 7.5, dir: 'up', sfx: 'door' },
       { x: 12, y: 0, w: 2, h: 1, to: 'route1', keepX: 12, ay: 38.4, dir: 'up' },
     ],
     texts: {
@@ -84,10 +86,11 @@ export const MAPS = {
         lines: ['The pond is so clear today.', 'I bet Water-type monsters live in there!'],
       },
       {
-        id: 'town_oldman', look: 'oldman', name: 'Old Man', x: 20, y: 14, dir: 'left', wander: 1,
+        id: 'town_oldman', look: 'oldman', name: 'Old Man', x: 22, y: 18, dir: 'left', wander: 1,
         lines: [
           'Tall grass is where wild monsters hide.',
           "Weaken them in battle, then throw a Capture Orb. That's the trick!",
+          'And if your monsters get hurt, the Monster Center will heal them for free.',
           'And if you see one wandering in the open, walk right up to it. Heh.',
         ],
       },
@@ -173,17 +176,45 @@ export const MAPS = {
         ],
       },
       {
-        id: 'r1_hiker', look: 'hiker', name: 'Hiker Bram', x: 4, y: 9, dir: 'right', wander: 2,
-        lines: ['Hiking is always better with a monster buddy.', "Mine's napping in its capture orb right now. Lazy thing!"],
+        id: 'r1_hiker', look: 'hiker', name: 'Hiker Bram', x: 4, y: 9, dir: 'right',
+        trainer: {
+          sight: 5, prize: 180, team: [['pebblit', 5], ['pebblit', 6]],
+          intro: ['Hiking makes you tough! My rock buddies will show you!'],
+          lose: ['Whoa! You really rock!'],
+          after: ['Hiking is always better with a monster buddy.', 'You should climb a mountain sometime!'],
+        },
       },
       {
-        id: 'r1_girl', look: 'girl', name: 'Lass Poppy', x: 17, y: 14, dir: 'down',
-        lines: ['These flowers smell amazing!', 'Wild monsters love them too. Sometimes they sneak out to sniff them.'],
+        id: 'r1_girl', look: 'girl', name: 'Lass Poppy', x: 17, y: 14, dir: 'left',
+        trainer: {
+          sight: 3, prize: 100, team: [['fluffinch', 5], ['psyfox', 5]],
+          intro: ['Hi there! Want to see the cutest monsters ever?'],
+          lose: ['Aww, my cuties lost...'],
+          after: ['These flowers smell amazing!', 'Wild monsters love them too. Sometimes they sneak out to sniff them.'],
+        },
       },
       {
-        id: 'r1_kid', look: 'kid', name: 'Youngster Tim', x: 16, y: 27, dir: 'left', wander: 2,
-        lines: ["When I grow up I'm gonna beat all 8 Gym Leaders!", "...After my mom says it's okay."],
+        id: 'r1_kid', look: 'youngster', name: 'Youngster Tim', x: 8, y: 24, dir: 'left',
+        trainer: {
+          sight: 3, prize: 64, team: [['brawlbit', 4], ['fluffinch', 4]],
+          intro: ["Hey! You've got monsters! Let's battle!"],
+          lose: ['No fair! I was just warming up!'],
+          after: ["When I grow up I'm gonna beat all 8 Gym Leaders!", "...After my mom says it's okay."],
+        },
       },
+      {
+        id: 'r1_camper', look: 'camper', name: 'Camper Leo', x: 9, y: 17, dir: 'right',
+        trainer: {
+          sight: 5, prize: 120, team: [['toxitoad', 6], ['kettlekin', 5]],
+          intro: ["I've been camping by this pond all week. Let's see what you've got!"],
+          lose: ['Guess I need more practice...'],
+          after: ['Kettlekin makes great tea on cold nights.', 'Toxitoad... does not.'],
+        },
+      },
+      { id: 'r1_item1', sprite: 'itemball', x: 18, y: 10, item: 'potion', count: 1, script: pickUpItem, hideIf: (g) => g.flags.items && g.flags.items.r1_item1 },
+      { id: 'r1_item2', sprite: 'itemball', x: 3, y: 31, item: 'orb', count: 3, script: pickUpItem, hideIf: (g) => g.flags.items && g.flags.items.r1_item2 },
+      { id: 'r1_item3', sprite: 'itemball', x: 18, y: 23, item: 'antidote', count: 1, script: pickUpItem, hideIf: (g) => g.flags.items && g.flags.items.r1_item3 },
+      { id: 'r1_item4', sprite: 'itemball', x: 16, y: 36, item: 'moonstone', count: 1, script: pickUpItem, hideIf: (g) => g.flags.items && g.flags.items.r1_item4 },
     ],
   },
 
@@ -205,7 +236,7 @@ export const MAPS = {
     ],
     objects: [
       { sprite: 'bed', x: 1, y: 1, w: 1, h: 2, script: bedRest },
-      { sprite: 'pc', x: 3, y: 1, w: 1, h: 1, text: ["It's your PC.", 'Extra monsters you catch are stored here.', '🚧 Managing your PC Box arrives in Phase 3.'] },
+      { sprite: 'pc', x: 3, y: 1, w: 1, h: 1, script: usePC },
       { sprite: 'tv', x: 6, y: 1, w: 1, h: 1, text: ["There's a monster battle on TV!", 'The Champion just won with a single move. So cool!'] },
       { sprite: 'bookshelf', x: 8, y: 1, w: 1, h: 1, text: ['It\'s packed with books.', '"Monsters of the Region, Vol. 1"... "How to Befriend a Dragon"...'] },
       { sprite: 'table', x: 6, y: 5, w: 2, h: 1, text: ['Breakfast is on the table.', 'Mom made pancakes!'] },
@@ -279,6 +310,45 @@ export const MAPS = {
       {
         id: 'aide', look: 'aide', name: 'Lab Aide', x: 9, y: 7, dir: 'left', wander: 1,
         lines: ['Welcome to the lab!', 'The Professor studies how monsters grow, evolve, and battle.', 'There are fifteen known types... and maybe more.'],
+      },
+    ],
+  },
+
+  center: {
+    name: 'Monster Center',
+    music: 'center',
+    outdoor: false,
+    bg: '#000000',
+    wallStyle: 'center',
+    tiles: [
+      'WWWWWWWWWWWW',
+      'VqqqqqqqqqqV',
+      'VqqqqqqqqqqV',
+      'VqqqqqqqqqqV',
+      'VqqqqqqqqqqV',
+      'VqqqqrrqqqqV',
+      'VqqqqrrqqqqV',
+      'VqqqqqqqqqqV',
+      'VVVVVmmVVVVV',
+    ],
+    objects: [
+      { sprite: 'counter4', x: 4, y: 2, w: 4, h: 1, text: ['The Monster Center counter. It smells like clean towels.'] },
+      { sprite: 'counter2', x: 9, y: 4, w: 2, h: 1, text: ['The shop counter. Items are neatly stacked behind it.'] },
+      { sprite: 'pc', x: 1, y: 1, w: 1, h: 1, script: usePC },
+      { sprite: 'bookshelf', x: 2, y: 1, w: 1, h: 1, text: ['"Type Matchups for Beginners" sits on the shelf.', 'Fire beats Grass, Grass beats Water, Water beats Fire. That\'s just the start!'] },
+      { sprite: 'plant', x: 1, y: 7, w: 1, h: 1, text: ['A cheerful potted plant.'] },
+      { sprite: 'plant', x: 10, y: 7, w: 1, h: 1, text: ['A cheerful potted plant.'] },
+    ],
+    warps: [
+      { x: 5, y: 8, w: 2, h: 1, to: 'mossbrook', ax: 20.5, ay: 16.6, dir: 'down', sfx: 'door' },
+    ],
+    texts: {},
+    npcs: [
+      { id: 'nurse', look: 'nurse', name: 'Nurse Clover', x: 5.5, y: 1, dir: 'down', script: nurseTalk },
+      { id: 'clerk', look: 'clerk', name: 'Clerk', x: 9.5, y: 3, dir: 'down', script: clerkTalk },
+      {
+        id: 'center_trainer', look: 'hiker', name: 'Traveler', x: 8, y: 6, dir: 'left', wander: 1,
+        lines: ['Use the PC over there to store monsters when your team is full.', 'You can carry six monsters at a time!'],
       },
     ],
   },

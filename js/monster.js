@@ -14,9 +14,59 @@ export const STATUS_INFO = {
 };
 
 export const ITEMS = {
-  orb: { name: 'Capture Orb', icon: '🔵', desc: 'Throw it at a weakened wild monster to catch it.', battle: true, catch: 1 },
-  potion: { name: 'Potion', icon: '🧪', desc: 'Restores 20 HP to one monster.', battle: true, field: true, heal: 20 },
+  orb: { name: 'Capture Orb', icon: '🔵', price: 200, desc: 'Throw it at a weakened wild monster to catch it.', battle: true, catch: 1 },
+  greatorb: { name: 'Great Orb', icon: '🟣', price: 600, desc: 'A better orb with a higher catch rate.', battle: true, catch: 1.5 },
+  potion: { name: 'Potion', icon: '🧪', price: 200, desc: 'Restores 20 HP to one monster.', battle: true, field: true, heal: 20 },
+  superpotion: { name: 'Super Potion', icon: '💖', price: 700, desc: 'Restores 60 HP to one monster.', battle: true, field: true, heal: 60 },
+  antidote: { name: 'Antidote', icon: '💚', price: 100, desc: 'Cures poison.', battle: true, field: true, cure: 'psn' },
+  paraheal: { name: 'Paralyze Heal', icon: '💛', price: 200, desc: 'Cures paralysis.', battle: true, field: true, cure: 'par' },
+  awakening: { name: 'Awakening', icon: '⏰', price: 200, desc: 'Wakes up a sleeping monster.', battle: true, field: true, cure: 'slp' },
+  burnheal: { name: 'Burn Heal', icon: '🧯', price: 250, desc: 'Heals a burn.', battle: true, field: true, cure: 'brn' },
+  iceheal: { name: 'Ice Heal', icon: '🧊', price: 250, desc: 'Thaws a frozen monster.', battle: true, field: true, cure: 'frz' },
+  fullheal: { name: 'Full Heal', icon: '✨', price: 600, desc: 'Cures any status problem.', battle: true, field: true, cure: 'all' },
+  revive: { name: 'Revive', icon: '💫', price: 1500, desc: 'Revives a fainted monster with half its HP.', battle: true, field: true, revive: 0.5 },
+  firestone: { name: 'Fire Stone', icon: '🔥', price: 2100, desc: 'Makes certain monsters evolve. It feels warm.', field: true, stone: true },
+  icestone: { name: 'Ice Stone', icon: '❄️', price: 2100, desc: 'Makes certain monsters evolve. It never melts.', field: true, stone: true },
+  moonstone: { name: 'Moon Stone', icon: '🌙', price: 2100, desc: 'Makes certain monsters evolve. It glows faintly at night.', field: true, stone: true },
 };
+
+export const SHOP_STOCK = ['orb', 'greatorb', 'potion', 'superpotion', 'antidote', 'paraheal', 'awakening', 'burnheal', 'iceheal', 'fullheal', 'revive', 'firestone', 'icestone', 'moonstone'];
+
+// The species this stone would evolve the monster into, or null.
+export function stoneEvolution(m, itemId) {
+  const evo = SPECIES[m.species].evo;
+  return evo && evo.item === itemId ? evo.into : null;
+}
+
+// Applies a healing item. Returns { ok, msg, hpChanged }.
+export function applyItem(itemId, m) {
+  const it = ITEMS[itemId];
+  const n = monName(m);
+  if (it.revive) {
+    if (m.hp > 0) return { ok: false, msg: "It won't have any effect." };
+    m.hp = Math.max(1, Math.floor(m.stats.hp * it.revive));
+    m.status = null;
+    return { ok: true, msg: `${n} was revived!`, hpChanged: true };
+  }
+  if (m.hp <= 0) return { ok: false, msg: "It won't have any effect." };
+  if (it.heal) {
+    if (m.hp >= m.stats.hp) return { ok: false, msg: "It won't have any effect." };
+    const before = m.hp;
+    m.hp = Math.min(m.stats.hp, m.hp + it.heal);
+    return { ok: true, msg: `${n} recovered ${m.hp - before} HP!`, hpChanged: true };
+  }
+  if (it.cure) {
+    if (!m.status || (it.cure !== 'all' && it.cure !== m.status)) return { ok: false, msg: "It won't have any effect." };
+    const was = STATUS_INFO[m.status].name;
+    m.status = null;
+    return { ok: true, msg: `${n} is no longer ${was}!`, statusChanged: true };
+  }
+  return { ok: false, msg: "It won't have any effect." };
+}
+
+// Prism variants are rare recolors with stronger stats.
+export const PRISM_CHANCE = 1 / 64;
+export const PRISM_BOOST = 1.1;
 
 let uidCounter = Date.now() % 100000;
 
@@ -30,6 +80,7 @@ export function calcStats(m) {
   STAT_KEYS.forEach((k, i) => {
     const core = Math.floor(((2 * b[i] + m.iv[i]) * m.level) / 100);
     out[k] = k === 'hp' ? core + m.level + 10 : core + 5;
+    if (m.prism) out[k] = Math.floor(out[k] * PRISM_BOOST);
   });
   return out;
 }
@@ -69,6 +120,10 @@ export function createMonster(speciesId, level, opts = {}) {
 
 export function monName(m) {
   return m.nick || SPECIES[m.species].name;
+}
+
+export function monLabel(m) {
+  return (m.prism ? '✨' : '') + monName(m);
 }
 
 export function isAlive(m) { return m && m.hp > 0; }

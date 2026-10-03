@@ -60,6 +60,15 @@ const SONGS = {
     chords: 'C:16 F:16 G:16 C:16',
     drums: 'k...h...k.k.h...',
   },
+  center: {
+    bpm: 96,
+    lead: 'A5:4 C6:4 F6:4 E6:2 C6:2 G5:4 C6:2 E6:2 G6:6 r:2 ' +
+          'F6:2 E6:2 D6:4 A5:4 D6:4 D6:4 C6:2 Bb5:2 F5:8 ' +
+          'A5:2 C6:2 F6:4 G6:2 A6:2 G6:4 E6:4 G6:4 C6:8 ' +
+          'D6:2 F6:2 Bb6:4 A6:2 G6:2 F6:4 E6:4 G6:4 C6:8',
+    chords: 'F:16 C:16 Dm:16 Bb:16 F:16 C:16 Bb:16 C:16',
+    drums: 'k.......h.......',
+  },
 };
 
 // Sound effect recipes per move type.
@@ -341,6 +350,17 @@ export const Audio = {
       case 'statdown': this.tone('p25', 84, t, 0.25, 0.08, out, 70); break;
       case 'status': this.tone('p50', 64, t, 0.08, 0.08, out); this.tone('p50', 61, t + 0.1, 0.12, 0.08, out); break;
       case 'evolve': [60, 64, 67, 72].forEach((m, i) => this.tone('triangle', m, t + i * 0.25, 0.25, 0.2, out)); break;
+      case 'spotted':
+        [79, 79, 84].forEach((m, i) => this.tone('p25', m, t + i * 0.09, 0.08, 0.12, out));
+        this.tone('p25', 91, t + 0.27, 0.25, 0.12, out);
+        break;
+      case 'pickup':
+        [72, 76, 79, 84, 88].forEach((m, i) => this.tone('p25', m, t + i * 0.06, 0.07, 0.1, out));
+        break;
+      case 'buy':
+        this.tone('p25', 88, t, 0.06, 0.1, out);
+        this.tone('p25', 96, t + 0.07, 0.15, 0.1, out);
+        break;
       case 'sparkle': this.tone('p12', 96 + Math.floor(Math.random() * 8), t, 0.05, 0.03, out); break;
       default:
         if (name.startsWith('move:')) this.moveSfx(name.slice(5), t, out);

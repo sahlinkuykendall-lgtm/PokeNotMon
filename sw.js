@@ -1,6 +1,6 @@
 // Offline support. Network-first so new updates show up right away when online;
 // falls back to the cache when offline.
-const CACHE = 'pokenotmon-v0.2.0';
+const CACHE = 'pokenotmon-v0.3.0';
 const ASSETS = [
   './',
   './index.html',

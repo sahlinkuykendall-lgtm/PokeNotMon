@@ -3,6 +3,9 @@
 import { LOOKS } from './sprites.js';
 import { formatPlayTime } from './save.js';
 import { VERSION, PHASE } from './config.js';
+import { DEX_ORDER } from './data/monsters.js';
+
+const DEX_TOTAL = DEX_ORDER.length;
 
 const $ = (sel, root = document) => root.querySelector(sel);
 export const el = (tag, cls, html) => {
@@ -309,7 +312,7 @@ export class UI {
     const dex = g.data.dex;
     this.push(new MenuLayer(this, [
       { icon: '🐾', label: 'Monsters', action: () => (g.data.party.length ? this.partyScreen({ mode: 'field' }) : noMonsters()) },
-      { icon: '📖', label: 'Dex', soon: `${dex.caught.length} caught`, action: () => { g.audio.sfx('select'); this.toast(`Seen ${dex.seen.length} · Caught ${dex.caught.length}. The full Dex arrives in Phase 3!`, 2600); } },
+      { icon: '📖', label: 'Dex', soon: `${dex.caught.length}/${DEX_TOTAL}`, action: () => this.dexScreen() },
       { icon: '🎒', label: 'Bag', action: () => this.bagScreen({ battle: false }) },
       { icon: '🪪', label: g.data.name, action: () => this.openTrainerCard() },
       { icon: '💾', label: 'Save', action: () => { g.saveGame(true); } },
@@ -329,7 +332,7 @@ export class UI {
         <div style="flex:1">
           <div class="row"><span>Name</span><b>${escapeHtml(d.name)}</b></div>
           <div class="row"><span>Money</span><b>$${d.money || 0}</b></div>
-          <div class="row"><span>Dex</span><b>${d.dex ? d.dex.caught.length : 0} caught</b></div>
+          <div class="row"><span>Dex</span><b>${d.dex ? d.dex.caught.length : 0} / ${DEX_TOTAL} caught</b></div>
           <div class="row"><span>Play time</span><b>${formatPlayTime(d.playTime || 0)}</b></div>
         </div>
       </div>

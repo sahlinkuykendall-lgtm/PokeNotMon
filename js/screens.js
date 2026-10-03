@@ -5,14 +5,23 @@ import { ScreenLayer, el, escapeHtml, guardClicks } from './ui.js';
 import { SPECIES, DEX_ORDER, STARTERS } from './data/monsters.js';
 import { MOVES } from './data/moves.js';
 import { TYPE_INFO, typeChip } from './data/types.js';
-import { monName, isAlive, STATUS_INFO, STAT_KEYS, STAT_NAMES, expToNext, expProgress, ITEMS } from './monster.js';
+import {
+  monName, monLabel, isAlive, STATUS_INFO, STAT_KEYS, STAT_NAMES, expToNext, expProgress, ITEMS, SHOP_STOCK, applyItem, stoneEvolution,
+} from './monster.js';
 
-function spriteCanvas(game, speciesId, cls = '') {
+function spriteCanvas(game, speciesId, cls = '', prism = false, shadow = false) {
   const c = document.createElement('canvas');
   c.width = 76; c.height = 72;
   c.className = 'mon-canvas ' + cls;
-  c.getContext('2d').drawImage(game.monArt.front(speciesId), 0, 0);
+  c.getContext('2d').drawImage(shadow ? game.monArt.shadow(speciesId) : game.monArt.front(speciesId, prism), 0, 0);
   return c;
+}
+
+// Would this item do anything to this monster? (Checks on a copy.)
+function itemWorks(itemId, m) {
+  const it = ITEMS[itemId];
+  if (it.stone) return !!stoneEvolution(m, itemId);
+  return applyItem(itemId, { ...m }).ok;
 }
 
 function hpColor(frac) { return frac > 0.5 ? '#4ccf5a' : frac > 0.2 ? '#f2c230' : '#e8483c'; }
@@ -72,6 +81,35 @@ function sheet(ui, layer, title, options) {
   });
 }
 
+// A -/+ quantity picker. Resolves with the amount or 0.
+function quantity(ui, layer, title, price, max) {
+  return new Promise((resolve) => {
+    let n = 1;
+    const back = el('div', 'sheet-back');
+    const box = el('div', 'box sheet');
+    box.innerHTML = `<div class="sheet-title">${escapeHtml(title)}</div>
+      <div class="qty-row"><button class="big-btn" data-d="-1">−</button><span class="qty">1</span><button class="big-btn" data-d="1">+</button></div>
+      <div class="qty-total"></div>
+      <button class="big-btn primary" data-ok>Confirm</button><button class="big-btn" data-no>Cancel</button>`;
+    const q = box.querySelector('.qty'), total = box.querySelector('.qty-total');
+    const show = () => { q.textContent = n; total.textContent = `Total: $${n * price}`; };
+    const done = (v) => { back.remove(); layer.onBack = saved; resolve(v); };
+    const saved = layer.onBack;
+    box.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => {
+      n = Math.max(1, Math.min(max, n + Number(b.dataset.d)));
+      ui.game.audio.sfx('blip');
+      show();
+    }));
+    box.querySelector('[data-ok]').addEventListener('click', () => done(n));
+    box.querySelector('[data-no]').addEventListener('click', () => { ui.game.audio.sfx('back'); done(0); });
+    layer.onBack = () => done(0);
+    back.appendChild(box);
+    layer.el.appendChild(back);
+    guardClicks(box, 250);
+    show();
+  });
+}
+
 export function installScreens(UI) {
   Object.assign(UI.prototype, {
     // --------------------------------------------------------------- party
@@ -91,10 +129,10 @@ export function installScreens(UI) {
           const sp = SPECIES[m.species];
           const frac = m.hp / m.stats.hp;
           const card = el('button', 'pcard' + (m.hp <= 0 ? ' fainted' : '') + (m.uid === activeUid ? ' active' : '') + (swapFrom === i ? ' swapping' : ''));
-          card.appendChild(spriteCanvas(g, m.species));
+          card.appendChild(spriteCanvas(g, m.species, '', m.prism));
           const info = el('div', 'pc-info');
           info.innerHTML = `
-            <div class="pc-top"><b>${escapeHtml(monName(m))}</b><span>Lv${m.level}</span></div>
+            <div class="pc-top"><b>${escapeHtml(monLabel(m))}</b><span>Lv${m.level}</span></div>
             <div class="pc-types">${sp.types.map(typeChip).join('')}</div>
             <div class="hpbar"><div class="fill" style="width:${(frac * 100).toFixed(1)}%;background:${hpColor(frac)}"></div></div>
             <div class="pc-hp"><span>${m.hp} / ${m.stats.hp}</span>${statusChip(m)}</div>`;
@@ -148,12 +186,13 @@ export function installScreens(UI) {
     summaryScreen(m) {
       const g = this.game;
       const sp = SPECIES[m.species];
-      const { node, layer } = openScreen(this, escapeHtml(monName(m)), { cls: 'summary' });
+      const { node, layer } = openScreen(this, escapeHtml(monLabel(m)), { cls: 'summary' });
       const no = String(DEX_ORDER.indexOf(m.species) + 1).padStart(3, '0');
       const frac = m.hp / m.stats.hp;
       const body = el('div', 'summary-body');
       const left = el('div', 'box sum-left');
-      left.appendChild(spriteCanvas(g, m.species, 'big'));
+      left.appendChild(spriteCanvas(g, m.species, 'big', m.prism));
+      if (m.prism) left.appendChild(el('div', 'prism-tag', '✨ Prism variant · stats +10%'));
       left.insertAdjacentHTML('beforeend', `
         <div class="sum-id">No.${no} · Lv${m.level} ${statusChip(m)}</div>
         <div class="pc-types">${sp.types.map(typeChip).join('')}</div>
@@ -180,13 +219,14 @@ export function installScreens(UI) {
     bagScreen({ battle = false, wild = false } = {}) {
       const g = this.game;
       const { node, layer } = openScreen(this, '🎒 Bag');
+      node.insertAdjacentHTML('beforeend', `<div class="money-chip">$${g.data.money}</div>`);
       const list = el('div', 'bag-list');
       node.appendChild(list);
 
       const render = () => {
         list.innerHTML = '';
-        const ids = Object.keys(ITEMS).filter((id) => (g.data.bag[id] || 0) > 0);
-        if (!ids.length) list.appendChild(el('div', 'box bag-empty', 'Your bag is empty.'));
+        const ids = Object.keys(ITEMS).filter((id) => (g.data.bag[id] || 0) > 0 && (battle ? ITEMS[id].battle : true));
+        if (!ids.length) list.appendChild(el('div', 'box bag-empty', battle ? 'No items you can use right now.' : 'Your bag is empty.'));
         const rows = ids.map((id) => {
           const it = ITEMS[id];
           const row = el('button', 'box bag-row');
@@ -207,25 +247,201 @@ export function installScreens(UI) {
           layer.close({ item: id });
           return;
         }
-        if (it.heal) {
-          const idx = await this.partyScreen({ mode: 'item', title: `Use ${it.name} on which monster?` });
-          if (idx == null) return;
-          const m = g.data.party[idx];
-          if (m.hp <= 0 || m.hp >= m.stats.hp) { g.audio.sfx('error'); this.toast("It won't have any effect."); return; }
-          if (battle) { layer.close({ item: id, target: idx }); return; }
-          const before = m.hp;
-          m.hp = Math.min(m.stats.hp, m.hp + it.heal);
-          g.useItem(id);
-          g.audio.sfx('heal');
-          this.toast(`${monName(m)} recovered ${m.hp - before} HP!`);
+        if (battle && !it.battle) { g.audio.sfx('error'); this.toast("You can't use that in battle."); return; }
+        const idx = await this.partyScreen({ mode: 'item', title: `Use ${it.name} on which monster?` });
+        if (idx == null) return;
+        const m = g.data.party[idx];
+        if (!itemWorks(id, m)) { g.audio.sfx('error'); this.toast("It won't have any effect."); return; }
+        if (battle) { layer.close({ item: id, target: idx }); return; }
+        if (it.stone) {
+          await g.useStone(id, m);
           render();
+          return;
         }
+        const r = applyItem(id, m);
+        g.useItem(id);
+        g.audio.sfx('heal');
+        this.toast(r.msg);
+        render();
       };
 
       render();
       return layer.promise.then((r) => r || null);
     },
 
+    // --------------------------------------------------------------- dex
+    dexScreen() {
+      const g = this.game;
+      const dex = g.data.dex;
+      const { node, layer } = openScreen(this, '📖 Monster Dex');
+      node.insertAdjacentHTML('beforeend', `<div class="dex-count">Seen ${dex.seen.length} · Caught ${dex.caught.length} · Total ${DEX_ORDER.length}</div>`);
+      const grid = el('div', 'dex-grid');
+      const cards = DEX_ORDER.map((id, i) => {
+        const seen = dex.seen.includes(id);
+        const caught = dex.caught.includes(id);
+        const card = el('button', 'dex-card' + (seen ? '' : ' unseen'));
+        card.appendChild(seen ? spriteCanvas(g, id) : spriteCanvas(g, id, '', false, true));
+        card.insertAdjacentHTML('beforeend', `<span class="dex-no">${String(i + 1).padStart(3, '0')}${caught ? ' <i class="dex-caught">●</i>' : ''}</span><b>${seen ? SPECIES[id].name : '???'}</b>`);
+        card.addEventListener('click', () => {
+          if (!seen) { g.audio.sfx('error'); return; }
+          g.audio.sfx('select');
+          this.dexEntry(id, i, caught);
+        });
+        grid.appendChild(card);
+        return card;
+      });
+      node.appendChild(grid);
+      layer.setFocusables(cards);
+      g.audio.sfx('select');
+      return layer.promise;
+    },
+
+    dexEntry(id, i, caught) {
+      const g = this.game;
+      const sp = SPECIES[id];
+      const { node, layer } = openScreen(this, `No.${String(i + 1).padStart(3, '0')} ${sp.name}`, { cls: 'summary' });
+      const body = el('div', 'summary-body');
+      const left = el('div', 'box sum-left');
+      left.appendChild(spriteCanvas(g, id, 'big'));
+      left.insertAdjacentHTML('beforeend', `<div class="pc-types">${sp.types.map(typeChip).join('')}</div>`);
+      const right = el('div', 'box sum-right');
+      if (caught) {
+        const names = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'];
+        right.innerHTML = `<div class="sum-dex">${escapeHtml(sp.dex)}</div>
+          <div class="base-stats">${sp.base.map((v, k) => `<div><span>${names[k]}</span><div class="bs-bar"><div style="width:${Math.min(100, v / 1.3)}%"></div></div><b>${v}</b></div>`).join('')}</div>
+          ${sp.evo ? `<div class="sum-small">Evolves into ${g.data.dex.seen.includes(sp.evo.into) ? SPECIES[sp.evo.into].name : '???'} ${sp.evo.level ? 'at level ' + sp.evo.level : 'with a ' + ITEMS[sp.evo.item].name}</div>` : ''}`;
+      } else {
+        right.innerHTML = '<div class="sum-dex">You have seen this monster, but not caught one yet. Catch it to learn more!</div>';
+      }
+      body.append(left, right);
+      node.appendChild(body);
+      return layer.promise;
+    },
+
+    // --------------------------------------------------------------- PC box
+    boxScreen() {
+      const g = this.game;
+      const { node, layer } = openScreen(this, '💻 Monster Storage');
+      const wrap = el('div', 'box-wrap');
+      node.appendChild(wrap);
+
+      const card = (m, where, i) => {
+        const b = el('button', 'pcard mini' + (m.hp <= 0 ? ' fainted' : ''));
+        b.appendChild(spriteCanvas(g, m.species, '', m.prism));
+        b.insertAdjacentHTML('beforeend', `<div class="pc-info"><div class="pc-top"><b>${escapeHtml(monLabel(m))}</b><span>Lv${m.level}</span></div><div class="pc-types">${SPECIES[m.species].types.map(typeChip).join('')}</div></div>`);
+        b.addEventListener('click', () => act(where, i));
+        return b;
+      };
+
+      const render = () => {
+        wrap.innerHTML = '';
+        const party = g.data.party, box = g.data.box;
+        const pa = el('div', 'box-col');
+        pa.appendChild(el('h2', '', `Team ${party.length}/6`));
+        const pb = el('div', 'box-col');
+        pb.appendChild(el('h2', '', `PC Box (${box.length})`));
+        const all = [];
+        party.forEach((m, i) => { const c = card(m, 'party', i); pa.appendChild(c); all.push(c); });
+        box.forEach((m, i) => { const c = card(m, 'box', i); pb.appendChild(c); all.push(c); });
+        if (!box.length) pb.appendChild(el('div', 'box-empty', 'Empty. Deposit monsters here.'));
+        wrap.append(pa, pb);
+        layer.setFocusables(all);
+      };
+
+      const act = async (where, i) => {
+        const party = g.data.party, box = g.data.box;
+        const m = where === 'party' ? party[i] : box[i];
+        g.audio.sfx('select');
+        if (where === 'party') {
+          const lastHealthy = party.filter(isAlive).length === 1 && isAlive(m);
+          const v = await sheet(this, layer, monLabel(m), [
+            { label: 'Deposit', value: 'dep', primary: true, disabled: party.length <= 1 || lastHealthy },
+            { label: 'Summary', value: 'sum' },
+            { label: 'Cancel', value: null },
+          ]);
+          if (v === 'dep') { box.push(party.splice(i, 1)[0]); this.toast(`${monName(m)} was stored in the PC Box.`); }
+          else if (v === 'sum') await this.summaryScreen(m);
+        } else {
+          const v = await sheet(this, layer, monLabel(m), [
+            { label: 'Withdraw', value: 'wd', primary: true, disabled: party.length >= 6 },
+            { label: 'Summary', value: 'sum' },
+            { label: 'Release', value: 'rel' },
+            { label: 'Cancel', value: null },
+          ]);
+          if (v === 'wd') { party.push(box.splice(i, 1)[0]); this.toast(`${monName(m)} joined your team!`); }
+          else if (v === 'sum') await this.summaryScreen(m);
+          else if (v === 'rel') {
+            const ok = await sheet(this, layer, `Release ${monName(m)}? This can't be undone.`, [
+              { label: 'Yes, release it', value: 'yes' },
+              { label: 'No', value: null, primary: true },
+            ]);
+            if (ok === 'yes') { box.splice(i, 1); this.toast(`Bye-bye, ${monName(m)}!`); }
+          }
+        }
+        render();
+      };
+
+      render();
+      return layer.promise;
+    },
+
+    // --------------------------------------------------------------- shop
+    shopScreen() {
+      const g = this.game;
+      const { node, layer } = openScreen(this, '🛒 Shop');
+      const money = el('div', 'money-chip');
+      const tabs = el('div', 'seg shop-tabs');
+      tabs.innerHTML = '<button data-t="buy" class="on">Buy</button><button data-t="sell">Sell</button>';
+      const list = el('div', 'bag-list');
+      node.append(money, tabs, list);
+      let mode = 'buy';
+      tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+        mode = b.dataset.t;
+        tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+        g.audio.sfx('blip');
+        render();
+      }));
+
+      const render = () => {
+        money.textContent = `$${g.data.money}`;
+        list.innerHTML = '';
+        const ids = mode === 'buy' ? SHOP_STOCK : Object.keys(g.data.bag).filter((id) => g.data.bag[id] > 0);
+        if (!ids.length) list.appendChild(el('div', 'box bag-empty', 'You have nothing to sell.'));
+        const rows = ids.map((id) => {
+          const it = ITEMS[id];
+          const price = mode === 'buy' ? it.price : Math.floor(it.price / 2);
+          const row = el('button', 'box bag-row');
+          row.innerHTML = `<span class="bag-ico">${it.icon}</span><span class="bag-main"><b>${it.name}</b><small>${it.desc} · You have ${g.data.bag[id] || 0}</small></span><span class="bag-count">$${price}</span>`;
+          row.addEventListener('click', () => trade(id, price));
+          list.appendChild(row);
+          return row;
+        });
+        layer.setFocusables(rows);
+      };
+
+      const trade = async (id, price) => {
+        const it = ITEMS[id];
+        g.audio.sfx('select');
+        const max = mode === 'buy' ? Math.min(99, Math.floor(g.data.money / price)) : g.data.bag[id] || 0;
+        if (max <= 0) { g.audio.sfx('error'); this.toast("You don't have enough money."); return; }
+        const n = await quantity(this, layer, `${mode === 'buy' ? 'Buy' : 'Sell'} ${it.name}`, price, max);
+        if (!n) return;
+        if (mode === 'buy') {
+          g.data.money -= n * price;
+          g.addItem(id, n);
+          if (id === 'orb' && n >= 10) { g.addItem('greatorb', 1); this.toast('Bonus: a free Great Orb!'); }
+        } else {
+          g.data.money += n * price;
+          g.data.bag[id] -= n;
+          if (g.data.bag[id] <= 0) delete g.data.bag[id];
+        }
+        g.audio.sfx('buy');
+        render();
+      };
+
+      render();
+      return layer.promise;
+    },
     // --------------------------------------------------------------- starter
     starterScreen() {
       const g = this.game;
@@ -287,7 +503,7 @@ export function installScreens(UI) {
     },
 
     // --------------------------------------------------------------- evolution
-    evolutionScreen(m, intoId) {
+    evolutionScreen(m, intoId, noCancel = false) {
       const g = this.game;
       const node = el('div', 'evo-screen');
       const c = document.createElement('canvas');
@@ -305,7 +521,7 @@ export function installScreens(UI) {
       let cancelled = false;
       let waiting = false;
       const show = (img) => { ctx.clearRect(0, 0, 76, 72); ctx.drawImage(img, 0, 0); };
-      show(art.front(fromId));
+      show(art.front(fromId, m.prism));
       text.textContent = `What? ${oldName} is evolving!`;
       g.audio.stopMusic();
       g.audio.sfx('evolve');
@@ -314,10 +530,10 @@ export function installScreens(UI) {
         t += dt;
         if (phase === 'intro' && t > 1.4) { phase = 'morph'; t = 0; }
         else if (phase === 'morph') {
-          if (input.consume('b')) {
+          if (!noCancel && input.consume('b')) {
             cancelled = true;
             phase = 'done';
-            show(art.front(fromId));
+            show(art.front(fromId, m.prism));
             text.textContent = `Huh? ${oldName} stopped evolving!`;
             g.audio.sfx('back');
             waiting = true;
@@ -331,7 +547,7 @@ export function installScreens(UI) {
             phase = 'done';
             m.species = intoId;
             g.onEvolved(m);
-            show(art.front(intoId));
+            show(art.front(intoId, m.prism));
             node.classList.add('flash');
             g.audio.sfx('caught');
             text.textContent = `Congratulations! Your ${oldName} evolved into ${SPECIES[intoId].name}!`;
